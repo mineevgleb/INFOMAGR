@@ -234,3 +234,8 @@ _Pvt_Extensions
 
 # FAKE - F# Make
 .fake/
+dlls_x64
+dlls_x86
+lib
+/*.sys
+/_readme.txt
