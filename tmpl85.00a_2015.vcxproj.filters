@@ -26,6 +26,9 @@
     <ClCompile Include="raytracer\Scene.cpp">
       <Filter>raytracer</Filter>
     </ClCompile>
+    <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp">
+      <Filter>raytracer\samplers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game.h" />
@@ -48,9 +51,6 @@
     <ClInclude Include="raytracer\structs.h">
       <Filter>raytracer</Filter>
     </ClInclude>
-    <ClInclude Include="raytracer\Renderable.h">
-      <Filter>raytracer</Filter>
-    </ClInclude>
     <ClInclude Include="raytracer\renederables\Sphere.h">
       <Filter>raytracer\renderables</Filter>
     </ClInclude>
@@ -59,6 +59,18 @@
     </ClInclude>
     <ClInclude Include="raytracer\Camera.h">
       <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\Sampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\ColorSampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\CheckboardSampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\renederables\Renderable.h">
+      <Filter>raytracer\renderables</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -70,6 +82,9 @@
     </Filter>
     <Filter Include="raytracer\renderables">
       <UniqueIdentifier>{0494064b-8380-4e9b-aa33-65d6db4c7a65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer\samplers">
+      <UniqueIdentifier>{badad585-9aa1-40ff-9d7d-2ac0897fb643}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

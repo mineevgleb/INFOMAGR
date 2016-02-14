@@ -221,6 +221,7 @@
     <ClCompile Include="game.cpp" />
     <ClCompile Include="raytracer\Camera.cpp" />
     <ClCompile Include="raytracer\renederables\Sphere.cpp" />
+    <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp" />
     <ClCompile Include="raytracer\Scene.cpp" />
     <ClCompile Include="raytracer\SceneObject.cpp" />
     <ClCompile Include="surface.cpp" />
@@ -234,8 +235,11 @@
     <ClInclude Include="game.h" />
     <ClInclude Include="precomp.h" />
     <ClInclude Include="raytracer\Camera.h" />
-    <ClInclude Include="raytracer\Renderable.h" />
+    <ClInclude Include="raytracer\renederables\Renderable.h" />
     <ClInclude Include="raytracer\renederables\Sphere.h" />
+    <ClInclude Include="raytracer\samplers\CheckboardSampler.h" />
+    <ClInclude Include="raytracer\samplers\ColorSampler.h" />
+    <ClInclude Include="raytracer\samplers\Sampler.h" />
     <ClInclude Include="raytracer\Scene.h" />
     <ClInclude Include="raytracer\SceneObject.h" />
     <ClInclude Include="raytracer\structs.h" />

@@ -79,9 +79,14 @@ namespace AGR {
 		}
 		unsigned long color = m_backgroundColor;
 		if (wasHit) {
-			float normalized = glm::min(((min.ray_length - 6) / 5) * 255, 255.0f);
-			color = 255 - static_cast<unsigned long>(round(normalized));
-			color = color + (color << 8) + (color << 16);
+			glm::vec3 hitPt = ray.origin + ray.directon * min.ray_length;
+			if (min.p_object->getMaterial()->isRequiresTexCoord) {
+				min.p_object->getTexCoord(hitPt, min.texCoord);
+			}
+			glm::vec3 ambientCol;
+			min.p_object->getMaterial()->ambientColor->getColor(min.texCoord, ambientCol);
+			ambientCol *= min.p_object->getMaterial()->ambientIntensity * 255;
+			color = unsigned(ambientCol.x) + (unsigned(ambientCol.y) << 8) + (unsigned(ambientCol.z) << 16);
 		}
 		return color;
 	}
