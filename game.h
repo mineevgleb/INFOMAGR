@@ -1,4 +1,6 @@
 #pragma once
+#include "raytracer\Scene.h"
+#include "raytracer\renederables\Sphere.h"
 
 namespace Tmpl8 {
 
@@ -17,6 +19,11 @@ public:
 	void KeyDown( int _Key ) { /* implement if you want to handle keys */ }
 private:
 	Surface* screen;
+	AGR::Camera *m_cam;
+	AGR::Sphere *m_sph;
+	AGR::Sphere *m_sph2;
+	AGR::Sphere *m_sph3;
+	AGR::Scene *m_scene;
 };
 
 }; // namespace Tmpl8

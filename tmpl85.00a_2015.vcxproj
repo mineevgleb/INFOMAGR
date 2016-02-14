@@ -219,6 +219,10 @@
   <ItemGroup>
     <ClCompile Include="counters.cpp" />
     <ClCompile Include="game.cpp" />
+    <ClCompile Include="raytracer\Camera.cpp" />
+    <ClCompile Include="raytracer\renederables\Sphere.cpp" />
+    <ClCompile Include="raytracer\Scene.cpp" />
+    <ClCompile Include="raytracer\SceneObject.cpp" />
     <ClCompile Include="surface.cpp" />
     <ClCompile Include="template.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -229,6 +233,12 @@
     <ClInclude Include="counters.h" />
     <ClInclude Include="game.h" />
     <ClInclude Include="precomp.h" />
+    <ClInclude Include="raytracer\Camera.h" />
+    <ClInclude Include="raytracer\Renderable.h" />
+    <ClInclude Include="raytracer\renederables\Sphere.h" />
+    <ClInclude Include="raytracer\Scene.h" />
+    <ClInclude Include="raytracer\SceneObject.h" />
+    <ClInclude Include="raytracer\structs.h" />
     <ClInclude Include="surface.h" />
     <ClInclude Include="template.h" />
     <ClInclude Include="threads.h" />

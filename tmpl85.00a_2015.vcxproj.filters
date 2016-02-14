@@ -14,6 +14,18 @@
     <ClCompile Include="counters.cpp">
       <Filter>template code</Filter>
     </ClCompile>
+    <ClCompile Include="raytracer\renederables\Sphere.cpp">
+      <Filter>raytracer\renderables</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\SceneObject.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\Camera.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\Scene.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game.h" />
@@ -30,10 +42,34 @@
     <ClInclude Include="counters.h">
       <Filter>template code</Filter>
     </ClInclude>
+    <ClInclude Include="raytracer\SceneObject.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\structs.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Renderable.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\renederables\Sphere.h">
+      <Filter>raytracer\renderables</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Scene.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Camera.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="template code">
       <UniqueIdentifier>{bf32dd6e-4be7-4889-8ac6-49e7ee163c40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer">
+      <UniqueIdentifier>{f1b45fd9-5fa7-4ecb-9a1f-dd1430f15bbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer\renderables">
+      <UniqueIdentifier>{0494064b-8380-4e9b-aa33-65d6db4c7a65}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
