@@ -1,18 +1,31 @@
 #pragma once
 #include "Renderable.h"
+#include "../util.h"
 
 namespace AGR {
 
 	class Sphere : public Renderable {
 	public:
-		//X component of the scale is used as the sphere's radius
-		Sphere(Material& m, const Transform& transform) : Renderable(transform, m) {}
+		Sphere(Material& m, const glm::vec3& position = glm::vec3(), float radius = 1.0f,
+		       const glm::vec3& rotation = glm::vec3());
 
-		Sphere(Material& m, const glm::vec3& position = glm::vec3(), float radius = 1.0f, const glm::vec3& rotation = glm::vec3())
-			: Sphere(m, Transform(position, rotation, glm::vec3(radius))) {}
+		virtual void intersect(const Ray &r, std::vector<Intersection> &out) const override;
+		void getTexCoord(glm::vec3 pt, glm::vec2& out) const override;
 
-		virtual void intersect(const Ray &r, std::vector<Intersection> &out);
-		void getTexCoord(glm::vec3 pt, glm::vec2& out);
+		const glm::vec3& getPosition() const;
+		void setPosition(const glm::vec3& position);
+
+		const glm::vec3& getRotation() const;
+		void setRotation(const glm::vec3& rotation);
+
+		float getRadius() const;
+		void setRadius(float radius);
+
+	private:
+		glm::vec3 m_position;
+		glm::vec3 m_rotation;
+		float m_radius;
+		glm::mat4x4 m_rotationMatrix;
 	};
 
 }

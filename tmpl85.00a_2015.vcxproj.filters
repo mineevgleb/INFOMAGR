@@ -17,17 +17,23 @@
     <ClCompile Include="raytracer\renederables\Sphere.cpp">
       <Filter>raytracer\renderables</Filter>
     </ClCompile>
-    <ClCompile Include="raytracer\SceneObject.cpp">
-      <Filter>raytracer</Filter>
-    </ClCompile>
     <ClCompile Include="raytracer\Camera.cpp">
-      <Filter>raytracer</Filter>
-    </ClCompile>
-    <ClCompile Include="raytracer\Scene.cpp">
       <Filter>raytracer</Filter>
     </ClCompile>
     <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp">
       <Filter>raytracer\samplers</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\Renderer.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\util.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\samplers\ImageSampler.cpp">
+      <Filter>raytracer\samplers</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\Material.cpp">
+      <Filter>raytracer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -45,17 +51,8 @@
     <ClInclude Include="counters.h">
       <Filter>template code</Filter>
     </ClInclude>
-    <ClInclude Include="raytracer\SceneObject.h">
-      <Filter>raytracer</Filter>
-    </ClInclude>
-    <ClInclude Include="raytracer\structs.h">
-      <Filter>raytracer</Filter>
-    </ClInclude>
     <ClInclude Include="raytracer\renederables\Sphere.h">
       <Filter>raytracer\renderables</Filter>
-    </ClInclude>
-    <ClInclude Include="raytracer\Scene.h">
-      <Filter>raytracer</Filter>
     </ClInclude>
     <ClInclude Include="raytracer\Camera.h">
       <Filter>raytracer</Filter>
@@ -72,6 +69,27 @@
     <ClInclude Include="raytracer\renederables\Renderable.h">
       <Filter>raytracer\renderables</Filter>
     </ClInclude>
+    <ClInclude Include="raytracer\Renderer.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Intersection.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Material.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\util.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\ImageSampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\lights\Light.h">
+      <Filter>raytracer\lights</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\lights\GlobalLight.h">
+      <Filter>raytracer\lights</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="template code">
@@ -85,6 +103,9 @@
     </Filter>
     <Filter Include="raytracer\samplers">
       <UniqueIdentifier>{badad585-9aa1-40ff-9d7d-2ac0897fb643}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer\lights">
+      <UniqueIdentifier>{3b324b86-23d8-4acc-adab-e3c47d7a4b77}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

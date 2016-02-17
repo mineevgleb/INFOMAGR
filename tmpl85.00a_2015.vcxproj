@@ -220,10 +220,12 @@
     <ClCompile Include="counters.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="raytracer\Camera.cpp" />
+    <ClCompile Include="raytracer\Material.cpp" />
     <ClCompile Include="raytracer\renederables\Sphere.cpp" />
     <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp" />
-    <ClCompile Include="raytracer\Scene.cpp" />
-    <ClCompile Include="raytracer\SceneObject.cpp" />
+    <ClCompile Include="raytracer\Renderer.cpp" />
+    <ClCompile Include="raytracer\samplers\ImageSampler.cpp" />
+    <ClCompile Include="raytracer\util.cpp" />
     <ClCompile Include="surface.cpp" />
     <ClCompile Include="template.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -235,14 +237,18 @@
     <ClInclude Include="game.h" />
     <ClInclude Include="precomp.h" />
     <ClInclude Include="raytracer\Camera.h" />
+    <ClInclude Include="raytracer\Intersection.h" />
+    <ClInclude Include="raytracer\lights\GlobalLight.h" />
+    <ClInclude Include="raytracer\lights\Light.h" />
+    <ClInclude Include="raytracer\Material.h" />
     <ClInclude Include="raytracer\renederables\Renderable.h" />
     <ClInclude Include="raytracer\renederables\Sphere.h" />
     <ClInclude Include="raytracer\samplers\CheckboardSampler.h" />
     <ClInclude Include="raytracer\samplers\ColorSampler.h" />
+    <ClInclude Include="raytracer\samplers\ImageSampler.h" />
     <ClInclude Include="raytracer\samplers\Sampler.h" />
-    <ClInclude Include="raytracer\Scene.h" />
-    <ClInclude Include="raytracer\SceneObject.h" />
-    <ClInclude Include="raytracer\structs.h" />
+    <ClInclude Include="raytracer\Renderer.h" />
+    <ClInclude Include="raytracer\util.h" />
     <ClInclude Include="surface.h" />
     <ClInclude Include="template.h" />
     <ClInclude Include="threads.h" />

@@ -1,8 +1,8 @@
-#include "Scene.h"
+#include "Renderer.h"
 #include <limits>
 
 namespace AGR {
-	Scene::Scene(Camera& c, unsigned long backgroundColor, const glm::vec2 & resolution)
+	Renderer::Renderer(const Camera& c, unsigned long backgroundColor, const glm::vec2 & resolution)
 		: m_camera(&c),
 		m_backgroundColor(backgroundColor),
 		m_resolution(resolution)
@@ -10,32 +10,32 @@ namespace AGR {
 		m_image = new unsigned long[m_resolution.x * m_resolution.y];
 	}
 
-	Scene::~Scene()
+	Renderer::~Renderer()
 	{
 		delete[] m_image;
 	}
 
-	void Scene::addRenderable(Renderable& r)
+	void Renderer::addRenderable(Renderable& r)
 	{
 		r.m_idx = m_renderables.size();
 		m_renderables.push_back(&r);
 	}
 
-	void Scene::removeRenderable(Renderable& r)
+	void Renderer::removeRenderable(Renderable& r)
 	{
 		if (r.m_idx > -1 && r.m_idx < m_renderables.size()) {
 			m_renderables[r.m_idx] = *m_renderables.rbegin();
 			m_renderables.pop_back();
-			r.m_idx = 0;
+			r.m_idx = -1;
 		}
 	}
 
-	void Scene::render()
+	void Renderer::render()
 	{
 		render(m_resolution);
 	}
 
-	void Scene::render(const glm::uvec2 & resolution)
+	void Renderer::render(const glm::uvec2 & resolution)
 	{
 		if (resolution != m_resolution) {
 			delete[] m_image;
@@ -53,17 +53,17 @@ namespace AGR {
 		}
 	}
 
-	const glm::uvec2 & Scene::getResolution() const
+	const glm::uvec2 & Renderer::getResolution() const
 	{
 		return m_resolution;
 	}
 
-	const unsigned long * Scene::getImage() const
+	const unsigned long * Renderer::getImage() const
 	{
 		return m_image;
 	}
 
-	unsigned long Scene::traceRay(const Ray & ray)
+	unsigned long Renderer::traceRay(const Ray & ray)
 	{
 		Intersection min;
 		bool wasHit = false;
@@ -80,13 +80,14 @@ namespace AGR {
 		unsigned long color = m_backgroundColor;
 		if (wasHit) {
 			glm::vec3 hitPt = ray.origin + ray.directon * min.ray_length;
-			if (min.p_object->getMaterial()->isRequiresTexCoord) {
-				min.p_object->getTexCoord(hitPt, min.texCoord);
+			glm::vec2 texCoord;
+			if (min.p_object->getMaterial()->isTexCoordRequired()) {
+				min.p_object->getTexCoord(hitPt, texCoord);
 			}
 			glm::vec3 ambientCol;
-			min.p_object->getMaterial()->ambientColor->getColor(min.texCoord, ambientCol);
-			ambientCol *= min.p_object->getMaterial()->ambientIntensity * 255;
-			color = unsigned(ambientCol.x) + (unsigned(ambientCol.y) << 8) + (unsigned(ambientCol.z) << 16);
+			min.p_object->getMaterial()->getAmbientColor()->getColor(texCoord, ambientCol);
+			ambientCol *= min.p_object->getMaterial()->getAmbientIntensity() * 255;
+			color = unsigned(ambientCol.b) + (unsigned(ambientCol.g) << 8) + (unsigned(ambientCol.r) << 16);
 		}
 		return color;
 	}

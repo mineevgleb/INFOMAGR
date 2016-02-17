@@ -1,5 +1,5 @@
 #pragma once
-#include "raytracer\Scene.h"
+#include "raytracer\Renderer.h"
 #include "raytracer\renederables\Sphere.h"
 
 namespace Tmpl8 {
@@ -23,7 +23,7 @@ private:
 	AGR::Sphere *m_sph;
 	AGR::Sphere *m_sph2;
 	AGR::Sphere *m_sph3;
-	AGR::Scene *m_scene;
+	AGR::Renderer *m_scene;
 	AGR::Material *m_mat;
 };
 
