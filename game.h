@@ -25,6 +25,7 @@ private:
 	AGR::Sphere *m_sph3;
 	AGR::Renderer *m_scene;
 	AGR::Material *m_mat;
+	AGR::Light *m_light;
 };
 
 }; // namespace Tmpl8

@@ -220,7 +220,7 @@
     <ClCompile Include="counters.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="raytracer\Camera.cpp" />
-    <ClCompile Include="raytracer\Material.cpp" />
+    <ClCompile Include="raytracer\lights\GlobalLight.cpp" />
     <ClCompile Include="raytracer\renederables\Sphere.cpp" />
     <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp" />
     <ClCompile Include="raytracer\Renderer.cpp" />

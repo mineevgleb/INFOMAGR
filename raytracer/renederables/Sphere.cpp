@@ -21,20 +21,28 @@ namespace AGR {
 		if (dsqr < 0) return;
 		if (abs(dsqr) < FLT_EPSILON) {
 			float t = -b / 2 * a;
-			glm::vec3 intersectPt = r.directon * t + r.origin;
-			glm::vec3 normal = (intersectPt - m_position) / m_position;
-			out.push_back(Intersection(t, normal, this));
-			return;
+			if (t > 0) {
+				glm::vec3 intersectPt = r.directon * t + r.origin;
+				glm::vec3 normal = (intersectPt - m_position) / m_radius;
+				out.push_back(Intersection(t, normal, this));
+				return;
+			}
 		}
 		float d = sqrt(dsqr);
 		float t = (-b + d) / 2 * a;
-		glm::vec3 intersectPt = r.directon * t + r.origin;
-		glm::vec3 normal = (intersectPt - m_position) / m_position;
-		out.push_back(Intersection(t, normal, this));
+		glm::vec3 intersectPt;
+		glm::vec3 normal;
+		if (t > 0) {
+			intersectPt = r.directon * t + r.origin;
+			normal = (intersectPt - m_position) / m_radius;
+			out.push_back(Intersection(t, normal, this));
+		}
 		t = (-b - d) / 2 * a;
-		intersectPt = r.directon * t + r.origin;
-		normal = (intersectPt - m_position) / m_position;
-		out.push_back(Intersection(t, normal, this));
+		if (t > 0) {
+			intersectPt = r.directon * t + r.origin;
+			normal = (intersectPt - m_position) / m_radius;
+			out.push_back(Intersection(t, normal, this));
+		}
 	}
 
 	void Sphere::getTexCoord(glm::vec3 pt, glm::vec2& out) const

@@ -9,7 +9,7 @@ namespace AGR {
 	public:
 		ImageSampler(const std::string& filename);
 		~ImageSampler();
-		virtual void getColor(const glm::vec2& texcoord, glm::vec3 &outColor) const override;
+		void getColor(const glm::vec2& texcoord, glm::vec3 &outColor) const override;
 		void LoadImage(const std::string& filename);
 	private:
 		FIBITMAP *m_bmp;

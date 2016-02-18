@@ -2,27 +2,15 @@
 #include "samplers\Sampler.h"
 
 namespace AGR {
-	class Material {
-	public:
-		float getAmbientIntensity() const;
-		void setAmbientIntensity(float ambientIntensity);
-
-		Sampler* const& getAmbientColor() const;
-		void setAmbientColor(Sampler* ambientColor);
-
-		float getDiffuseIntensity() const;
-		void setDiffuseIntensity(float diffuseIntensity);
-
-		Sampler* const& getDiffuseColor() const;
-		void setDiffuseColor(Sampler* diffuseColor);
-
-		bool isTexCoordRequired() const;
-	private:
-		void updateRequireTex();
-		bool m_isRequiresTexCoord = false;
-		float m_ambientIntensity = 0.0f;
-		Sampler* m_ambientColor = nullptr;
-		float m_diffuseIntensity = 0.0f;
-		Sampler* m_diffuseColor = nullptr;
+	struct Material {
+		bool isTexCoordRequired() const
+		{
+			return texture != nullptr && texture->isRequiresTexture();
+		};
+		float ambientIntensity = 0.0f;
+		float diffuseIntensity = 0.0f;
+		float specularIntensity = 0.0f;
+		float shininess = 0.0f;
+		Sampler* texture = nullptr;
 	};
 }
