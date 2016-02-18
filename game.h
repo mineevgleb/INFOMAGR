@@ -19,13 +19,12 @@ public:
 	void KeyDown( int _Key ) { /* implement if you want to handle keys */ }
 private:
 	Surface* screen;
+	std::vector<AGR::Renderable *> r;
+	std::vector<AGR::Material *> m;
+	std::vector<AGR::Sampler *> s;
+	std::vector<AGR::Light *> l;
 	AGR::Camera *m_cam;
-	AGR::Sphere *m_sph;
-	AGR::Sphere *m_sph2;
-	AGR::Sphere *m_sph3;
 	AGR::Renderer *m_scene;
-	AGR::Material *m_mat;
-	AGR::Light *m_light;
 };
 
 }; // namespace Tmpl8

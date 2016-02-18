@@ -19,7 +19,7 @@ namespace AGR {
 		const glm::uvec2 & getResolution() const;
 		const unsigned long *getImage() const;
 	private:
-		void traceRay(const Ray& ray, glm::vec3& color);
+		void traceRay(const Ray& ray, float energy, int depth, glm::vec3& color);
 		bool getClosestIntersection(const Ray& ray, Intersection& intersect);
 		void gatherLight(const Intersection &hit, const Ray& ray, glm::vec3& color);
 
@@ -29,6 +29,9 @@ namespace AGR {
 		glm::uvec2 m_resolution;
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
+
+		const int maxRecursionDepth = 5;
+		const float shiftValue = FLT_EPSILON * 500;
 	};
 
 }

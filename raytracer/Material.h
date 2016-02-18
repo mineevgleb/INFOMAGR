@@ -10,6 +10,8 @@ namespace AGR {
 		float ambientIntensity = 0.0f;
 		float diffuseIntensity = 0.0f;
 		float specularIntensity = 0.0f;
+		float reflectionIntensity = 0.0f;
+		float refractionIntensity = 0.0f;
 		float shininess = 0.0f;
 		Sampler* texture = nullptr;
 	};

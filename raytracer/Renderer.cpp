@@ -63,7 +63,7 @@ namespace AGR {
 					static_cast<float>(y) / (m_resolution.y - 1));
 				m_camera->produceRay(curPixel, r);
 				glm::vec3 c;
-				traceRay(r, c);
+				traceRay(r, 1.0, 1, c);
 				c *= 255; 
 				m_image[x + y * resolution.x] = 
 					(unsigned(c.b)) + (unsigned(c.g) << 8) + (unsigned(c.r) << 16);
@@ -81,15 +81,33 @@ namespace AGR {
 		return m_image;
 	}
 
-	void Renderer::traceRay(const Ray& ray, glm::vec3& color)
+	void Renderer::traceRay(const Ray& ray, float energy, int depth, glm::vec3& color)
 	{
-		
+		if (energy < 1.0 / 255 || depth > maxRecursionDepth)
+		{
+			color = glm::vec3();
+			return;
+		}
 		color = m_backgroundColor;
 		Intersection closestHit;
 		if (getClosestIntersection(ray, closestHit)) {
 			glm::vec3 colorSelf;
 			gatherLight(closestHit, ray, colorSelf);
-			color = colorSelf;
+
+			const Material* m = closestHit.p_object->getMaterial();
+			glm::vec3 colorReflected;
+			if (m->reflectionIntensity > FLT_EPSILON) {
+				Ray reflectedRay;
+				reflectedRay.origin = closestHit.hitPt + closestHit.normal * shiftValue;
+				reflectedRay.directon =
+					2 * glm::dot(closestHit.normal, -ray.directon) * closestHit.normal
+					+ ray.directon;
+				traceRay(reflectedRay, energy * m->reflectionIntensity, depth + 1, colorReflected);
+			}
+			color = colorSelf + colorReflected * m->reflectionIntensity;
+			color.r = glm::clamp(color.r, 0.0f, 1.0f);
+			color.g = glm::clamp(color.g, 0.0f, 1.0f);
+			color.b = glm::clamp(color.b, 0.0f, 1.0f);
 			return;
 		}
 		color = m_backgroundColor;
@@ -120,54 +138,48 @@ namespace AGR {
 	{
 		color = glm::vec3();
 		const Material* m = hit.p_object->getMaterial();
-		if (m->texture) {
-			glm::vec3 colorInPt;
-			if (m->ambientIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON)
-			{
-				glm::vec2 texCoord;
-				if (m->isTexCoordRequired()) {
-					hit.p_object->getTexCoord(hit.hitPt, texCoord);
-				}
-				m->texture->getColor(texCoord, colorInPt);
+		glm::vec3 colorInPt;
+		if (m->texture && (m->ambientIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON))
+		{
+			glm::vec2 texCoord;
+			if (m->isTexCoordRequired()) {
+				hit.p_object->getTexCoord(hit.hitPt, texCoord);
 			}
-			color += colorInPt * m->ambientIntensity;
-			if (m->specularIntensity > 0 || glm::length(colorInPt) > 0)
-			{
-				const float shiftValue = FLT_EPSILON * 500;
-				glm::vec3 shiftedPt = hit.hitPt + hit.normal * shiftValue;
-				for (auto l : m_lights) {
-					glm::vec3 lightCol;
-					l->getIntensityAtThePoint(shiftedPt, lightCol);
-					if (glm::length(lightCol) < FLT_EPSILON) continue;
-					LightRay distToLight;
-					l->getDirectionToTheLight(shiftedPt, distToLight);
-					Ray rayToLight;
-					rayToLight.origin = shiftedPt;
-					rayToLight.directon = distToLight.direction;
-					Intersection intersect;
-					bool isIntersect = getClosestIntersection(rayToLight, intersect);
-					if (!isIntersect || intersect.ray_length > distToLight.length)
-					{
-						float diffuseScaler =
-							glm::clamp(glm::dot(hit.normal, rayToLight.directon), 0.0f, 1.0f);
-						color += colorInPt * lightCol * diffuseScaler * m->diffuseIntensity;
-					}
-					if (m->specularIntensity > FLT_EPSILON)
-					{
-						glm::vec3 reflected =
-							2 * glm::dot(hit.normal, rayToLight.directon) * hit.normal 
-							- rayToLight.directon;
-						float specularScaler = 
-							glm::clamp(glm::dot(reflected, -ray.directon), 0.0f, 1.0f);
-						color += lightCol *
-							glm::pow(specularScaler, m->shininess) *
-							m->specularIntensity;
-					}
-				}
-			}	
+			m->texture->getColor(texCoord, colorInPt);
 		}
-		color.r = glm::clamp(color.r, 0.0f, 1.0f);
-		color.g = glm::clamp(color.g, 0.0f, 1.0f);
-		color.b = glm::clamp(color.b, 0.0f, 1.0f);
+		color += colorInPt * m->ambientIntensity;
+		if (m->specularIntensity > 0 || glm::length(colorInPt) > 0)
+		{
+			glm::vec3 shiftedPt = hit.hitPt + hit.normal * shiftValue;
+			for (auto l : m_lights) {
+				glm::vec3 lightCol;
+				l->getIntensityAtThePoint(shiftedPt, lightCol);
+				if (glm::length(lightCol) < FLT_EPSILON) continue;
+				LightRay distToLight;
+				l->getDirectionToTheLight(shiftedPt, distToLight);
+				Ray rayToLight;
+				rayToLight.origin = shiftedPt;
+				rayToLight.directon = distToLight.direction;
+				Intersection intersect;
+				bool isIntersect = getClosestIntersection(rayToLight, intersect);
+				if (!isIntersect || intersect.ray_length > distToLight.length)
+				{
+					float diffuseScaler =
+						glm::clamp(glm::dot(hit.normal, rayToLight.directon), 0.0f, 1.0f);
+					color += colorInPt * lightCol * diffuseScaler * m->diffuseIntensity;
+				}
+				if (m->specularIntensity > FLT_EPSILON)
+				{
+					glm::vec3 reflected =
+						2 * glm::dot(hit.normal, rayToLight.directon) * hit.normal 
+						- rayToLight.directon;
+					float specularScaler = 
+						glm::clamp(glm::dot(reflected, -ray.directon), 0.0f, 1.0f);
+					color += lightCol *
+						glm::pow(specularScaler, m->shininess) *
+						m->specularIntensity;
+				}
+			}
+		}	
 	}
 }

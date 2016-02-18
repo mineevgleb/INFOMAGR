@@ -35,6 +35,9 @@
     <ClCompile Include="raytracer\lights\GlobalLight.cpp">
       <Filter>raytracer\lights</Filter>
     </ClCompile>
+    <ClCompile Include="raytracer\lights\PointLight.cpp">
+      <Filter>raytracer\lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game.h" />
@@ -88,6 +91,9 @@
       <Filter>raytracer\lights</Filter>
     </ClInclude>
     <ClInclude Include="raytracer\lights\GlobalLight.h">
+      <Filter>raytracer\lights</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\lights\PointLight.h">
       <Filter>raytracer\lights</Filter>
     </ClInclude>
   </ItemGroup>
