@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="game.cpp" />
+    <ClCompile Include="surface.cpp">
+      <Filter>template code</Filter>
+    </ClCompile>
+    <ClCompile Include="threads.cpp">
+      <Filter>template code</Filter>
+    </ClCompile>
+    <ClCompile Include="template.cpp">
+      <Filter>template code</Filter>
+    </ClCompile>
+    <ClCompile Include="counters.cpp">
+      <Filter>template code</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\renederables\Sphere.cpp">
+      <Filter>raytracer\renderables</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\Camera.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp">
+      <Filter>raytracer\samplers</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\Renderer.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\util.cpp">
+      <Filter>raytracer</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\samplers\ImageSampler.cpp">
+      <Filter>raytracer\samplers</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\lights\GlobalLight.cpp">
+      <Filter>raytracer\lights</Filter>
+    </ClCompile>
+    <ClCompile Include="raytracer\lights\PointLight.cpp">
+      <Filter>raytracer\lights</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game.h" />
+    <ClInclude Include="surface.h">
+      <Filter>template code</Filter>
+    </ClInclude>
+    <ClInclude Include="threads.h">
+      <Filter>template code</Filter>
+    </ClInclude>
+    <ClInclude Include="template.h">
+      <Filter>template code</Filter>
+    </ClInclude>
+    <ClInclude Include="precomp.h" />
+    <ClInclude Include="counters.h">
+      <Filter>template code</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\renederables\Sphere.h">
+      <Filter>raytracer\renderables</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Camera.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\Sampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\ColorSampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\CheckboardSampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\renederables\Renderable.h">
+      <Filter>raytracer\renderables</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Renderer.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Intersection.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\Material.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\util.h">
+      <Filter>raytracer</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\samplers\ImageSampler.h">
+      <Filter>raytracer\samplers</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\lights\Light.h">
+      <Filter>raytracer\lights</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\lights\GlobalLight.h">
+      <Filter>raytracer\lights</Filter>
+    </ClInclude>
+    <ClInclude Include="raytracer\lights\PointLight.h">
+      <Filter>raytracer\lights</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="template code">
+      <UniqueIdentifier>{bf32dd6e-4be7-4889-8ac6-49e7ee163c40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer">
+      <UniqueIdentifier>{f1b45fd9-5fa7-4ecb-9a1f-dd1430f15bbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer\renderables">
+      <UniqueIdentifier>{0494064b-8380-4e9b-aa33-65d6db4c7a65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer\samplers">
+      <UniqueIdentifier>{badad585-9aa1-40ff-9d7d-2ac0897fb643}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raytracer\lights">
+      <UniqueIdentifier>{3b324b86-23d8-4acc-adab-e3c47d7a4b77}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="_readme.txt">
+      <Filter>template code</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

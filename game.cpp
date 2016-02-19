@@ -73,6 +73,6 @@ void Game::Tick( float _DT )
 	memcpy(screen->GetBuffer(), m_scene->getImage(),
 		m_scene->getResolution().x * m_scene->getResolution().y * sizeof(Pixel));
 	glm::vec3 rot = ((AGR::Sphere *)r[2])->getRotation();
-	rot.y += 50;
+	rot.y += 5;
 	((AGR::Sphere *)r[2])->setRotation(rot);
 }

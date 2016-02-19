@@ -11,38 +11,41 @@ namespace AGR {
 		rotateMat(m_rotation, m_rotationMatrix);
 	}
 
-	void Sphere::intersect(const Ray & r, std::vector<Intersection> & out) const
+	bool Sphere::intersect(const Ray & r, Intersection& out) const
 	{
 		glm::vec3 sphere2ray = r.origin - m_position;
 		float a = glm::dot(r.directon, r.directon);
 		float b = glm::dot(r.directon * 2.0f, sphere2ray);
 		float c = glm::dot(sphere2ray, sphere2ray) - m_radius * m_radius;
 		float dsqr = b * b - 4 * a * c;
-		if (dsqr < 0) return;
+		if (dsqr < 0) return false;
 		if (abs(dsqr) < FLT_EPSILON) {
 			float t = -b / 2 * a;
 			if (t > 0) {
 				glm::vec3 intersectPt = r.directon * t + r.origin;
 				glm::vec3 normal = (intersectPt - m_position) / m_radius;
-				out.push_back(Intersection(t, normal, this));
-				return;
+				out.normal = normal;
+				out.ray_length = t;
+				out.p_object = this;
+				return true;
 			}
 		}
 		float d = sqrt(dsqr);
-		float t = (-b + d) / 2 * a;
+		float t = (-b - d) / 2 * a;
+		if (t < 0) {
+			t = (-b + d) / 2 * a;
+		}
+		if (t < 0) {
+			return false;
+		}
 		glm::vec3 intersectPt;
 		glm::vec3 normal;
-		if (t > 0) {
-			intersectPt = r.directon * t + r.origin;
-			normal = (intersectPt - m_position) / m_radius;
-			out.push_back(Intersection(t, normal, this));
-		}
-		t = (-b - d) / 2 * a;
-		if (t > 0) {
-			intersectPt = r.directon * t + r.origin;
-			normal = (intersectPt - m_position) / m_radius;
-			out.push_back(Intersection(t, normal, this));
-		}
+		intersectPt = r.directon * t + r.origin;
+		normal = (intersectPt - m_position) / m_radius;
+		out.normal = normal;
+		out.ray_length = t;
+		out.p_object = this;
+		return true;
 	}
 
 	void Sphere::getTexCoord(glm::vec3 pt, glm::vec2& out) const

@@ -1,9 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40418.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Template", "tmpl85.00a_2015.vcxproj", "{D8FE2186-4BF0-4B89-913F-6C26818E5AC5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C} = {AD9C791E-FBE0-4D3B-87D4-52562A1A787C}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AGRraytracer", "AGRraytracer.vcxproj", "{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +26,14 @@ Global
 		{D8FE2186-4BF0-4B89-913F-6C26818E5AC5}.Release|Win32.Build.0 = Release|Win32
 		{D8FE2186-4BF0-4B89-913F-6C26818E5AC5}.Release|x64.ActiveCfg = Release|x64
 		{D8FE2186-4BF0-4B89-913F-6C26818E5AC5}.Release|x64.Build.0 = Release|x64
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Debug|Win32.Build.0 = Debug|Win32
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Debug|x64.ActiveCfg = Debug|x64
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Debug|x64.Build.0 = Debug|x64
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Release|Win32.ActiveCfg = Release|Win32
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Release|Win32.Build.0 = Release|Win32
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Release|x64.ActiveCfg = Release|x64
+		{AD9C791E-FBE0-4D3B-87D4-52562A1A787C}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

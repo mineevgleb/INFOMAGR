@@ -134,12 +134,11 @@ namespace AGR {
 		intersect.ray_length = FLT_MAX;
 		bool wasHit = false;
 		for (auto r : m_renderables) {
-			std::vector<Intersection> cur;
-			r->intersect(ray, cur);
-			for (const auto &i : cur) {
+			Intersection cur;
+			if (r->intersect(ray, cur)) {
 				wasHit = true;
-				if (i.ray_length > 0 && i.ray_length < intersect.ray_length) {
-					intersect = i;
+				if (cur.ray_length > 0 && cur.ray_length < intersect.ray_length) {
+					intersect = cur;
 				}
 			}
 		}
@@ -210,25 +209,19 @@ namespace AGR {
 			color = glm::vec3();
 			return;
 		}
-		std::vector<Intersection> exitPts;
-		hit.p_object->intersect(refractedRay, exitPts);
-		Intersection *closestIntersection = nullptr;
-		for (Intersection& i: exitPts) {
-			if (closestIntersection == nullptr || i.ray_length < i.ray_length) {
-				closestIntersection = &i;
-			}
-		}
-		closestIntersection->hitPt =
-			refractedRay.origin + refractedRay.directon * closestIntersection->ray_length;
+		Intersection exitPt;
+		hit.p_object->intersect(refractedRay, exitPt);
+		exitPt.hitPt =
+			refractedRay.origin + refractedRay.directon * exitPt.ray_length;
 		Ray refractedRay2;
 		refractedRay2.origin = 
-			closestIntersection->hitPt + closestIntersection->normal * shiftValue;
-		if (!calcRefractedRay(refractedRay.directon, -closestIntersection->normal,
+			exitPt.hitPt + exitPt.normal * shiftValue;
+		if (!calcRefractedRay(refractedRay.directon, -exitPt.normal,
 			m->refractionCoeficient, 1.0f, refractedRay2.directon)) {
 			color = m->innerColor;
 			return;
 		}
-		float distanceTraveled = glm::length(hit.hitPt - closestIntersection->hitPt);
+		float distanceTraveled = glm::length(hit.hitPt - exitPt.hitPt);
 		float remainedIntensity = glm::exp(-glm::log(m->absorption) * distanceTraveled);
 		glm::vec3 furtherTraceColor;
 		traceRay(refractedRay2, remainedIntensity * energy, depth, furtherTraceColor);
