@@ -95,16 +95,32 @@ namespace AGR {
 			gatherLight(closestHit, ray, colorSelf);
 
 			const Material* m = closestHit.p_object->getMaterial();
+			glm::vec3 colorRefracted;
+			float realReflection = 0.0f;
+			float realRefraction = 0.0f;
+			if (m->refractionIntensity > FLT_EPSILON) {
+				realReflection = calcReflectionComponent(ray.directon,
+					closestHit.normal, 1.0f, m->refractionCoeficient);
+				realRefraction = (1 - realReflection) * m->refractionIntensity;
+				realReflection *= m->refractionIntensity;
+				traceRefraction(closestHit, ray, colorRefracted,
+					energy * realRefraction, depth + 1);
+			}
 			glm::vec3 colorReflected;
-			if (m->reflectionIntensity > FLT_EPSILON) {
+			realReflection += m->reflectionIntensity;
+			realReflection = glm::clamp(realReflection, 0.0f, 1.0f);
+			if (realReflection > FLT_EPSILON) {
 				Ray reflectedRay;
 				reflectedRay.origin = closestHit.hitPt + closestHit.normal * shiftValue;
-				reflectedRay.directon =
-					2 * glm::dot(closestHit.normal, -ray.directon) * closestHit.normal
-					+ ray.directon;
-				traceRay(reflectedRay, energy * m->reflectionIntensity, depth + 1, colorReflected);
+				calcReflectedRay(ray.directon, closestHit.normal, reflectedRay.directon);
+				traceRay(reflectedRay, energy * realReflection, depth + 1, colorReflected);
 			}
-			color = colorSelf + colorReflected * m->reflectionIntensity;
+			if (realReflection > 0.3) {
+				color = glm::vec3(1, 0, 0);
+			}
+			color = colorSelf + 
+				colorReflected * realReflection +
+				colorRefracted * realRefraction;
 			color.r = glm::clamp(color.r, 0.0f, 1.0f);
 			color.g = glm::clamp(color.g, 0.0f, 1.0f);
 			color.b = glm::clamp(color.b, 0.0f, 1.0f);
@@ -139,8 +155,7 @@ namespace AGR {
 		color = glm::vec3();
 		const Material* m = hit.p_object->getMaterial();
 		glm::vec3 colorInPt;
-		if (m->texture && (m->ambientIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON))
-		{
+		if (m->texture && (m->ambientIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON)) {
 			glm::vec2 texCoord;
 			if (m->isTexCoordRequired()) {
 				hit.p_object->getTexCoord(hit.hitPt, texCoord);
@@ -148,8 +163,7 @@ namespace AGR {
 			m->texture->getColor(texCoord, colorInPt);
 		}
 		color += colorInPt * m->ambientIntensity;
-		if (m->specularIntensity > 0 || glm::length(colorInPt) > 0)
-		{
+		if (m->specularIntensity > 0 || glm::length(colorInPt) > 0) {
 			glm::vec3 shiftedPt = hit.hitPt + hit.normal * shiftValue;
 			for (auto l : m_lights) {
 				glm::vec3 lightCol;
@@ -162,14 +176,12 @@ namespace AGR {
 				rayToLight.directon = distToLight.direction;
 				Intersection intersect;
 				bool isIntersect = getClosestIntersection(rayToLight, intersect);
-				if (!isIntersect || intersect.ray_length > distToLight.length)
-				{
+				if (!isIntersect || intersect.ray_length > distToLight.length) {
 					float diffuseScaler =
 						glm::clamp(glm::dot(hit.normal, rayToLight.directon), 0.0f, 1.0f);
 					color += colorInPt * lightCol * diffuseScaler * m->diffuseIntensity;
 				}
-				if (m->specularIntensity > FLT_EPSILON)
-				{
+				if (m->specularIntensity > FLT_EPSILON) {
 					glm::vec3 reflected =
 						2 * glm::dot(hit.normal, rayToLight.directon) * hit.normal 
 						- rayToLight.directon;
@@ -181,5 +193,76 @@ namespace AGR {
 				}
 			}
 		}	
+	}
+
+	void Renderer::traceRefraction(const Intersection& hit, const Ray& ray, glm::vec3& color, 
+		float energy, int depth)
+	{
+		if (energy < 1.0 / 255 || depth > maxRecursionDepth) {
+			color = glm::vec3();
+			return;
+		}
+		const Material* m = hit.p_object->getMaterial();
+		Ray refractedRay;
+		refractedRay.origin = hit.hitPt - hit.normal * shiftValue;
+		if (!calcRefractedRay(ray.directon, hit.normal, 1.0f, 
+			m->refractionCoeficient, refractedRay.directon)) {
+			color = glm::vec3();
+			return;
+		}
+		std::vector<Intersection> exitPts;
+		hit.p_object->intersect(refractedRay, exitPts);
+		Intersection *closestIntersection = nullptr;
+		for (Intersection& i: exitPts) {
+			if (closestIntersection == nullptr || i.ray_length < i.ray_length) {
+				closestIntersection = &i;
+			}
+		}
+		closestIntersection->hitPt =
+			refractedRay.origin + refractedRay.directon * closestIntersection->ray_length;
+		Ray refractedRay2;
+		refractedRay2.origin = 
+			closestIntersection->hitPt + closestIntersection->normal * shiftValue;
+		if (!calcRefractedRay(refractedRay.directon, -closestIntersection->normal,
+			m->refractionCoeficient, 1.0f, refractedRay2.directon)) {
+			color = m->innerColor;
+			return;
+		}
+		float distanceTraveled = glm::length(hit.hitPt - closestIntersection->hitPt);
+		float remainedIntensity = glm::exp(-glm::log(m->absorption) * distanceTraveled);
+		glm::vec3 furtherTraceColor;
+		traceRay(refractedRay2, remainedIntensity * energy, depth, furtherTraceColor);
+		color = furtherTraceColor * remainedIntensity + m->innerColor * (1 - remainedIntensity);
+	}
+
+	bool Renderer::calcRefractedRay(const glm::vec3& incomingRay, const glm::vec3& normal, 
+		float n1, float n2, glm::vec3& refracted) const
+	{
+		float angleCos = glm::dot(normal, -incomingRay);
+		float scaler = n1 / n2;
+		float k = 1.0f - (scaler * scaler) * (1.0f - angleCos * angleCos);
+		if (k < 0) {
+			return false;
+		}
+		refracted =
+			glm::normalize(scaler * incomingRay + normal * (scaler * angleCos - glm::sqrt(k)));
+		return true;
+	}
+
+	void Renderer::calcReflectedRay(const glm::vec3& incomingRay, const glm::vec3& normal, 
+		glm::vec3& reflected) const
+	{
+		reflected =
+			2 * glm::dot(normal, -incomingRay) * normal
+			+ incomingRay;
+	}
+
+	float Renderer::calcReflectionComponent(const glm::vec3& incomingRay, const glm::vec3& normal, 
+		float n1, float n2) const
+	{
+		float r0 = (n1 - n2) / (n1 + n2);
+		r0 *= r0;
+		float angleCos = glm::dot(-incomingRay, normal);
+		return r0 + (1 - r0) * glm::pow(1 - angleCos, 5.0f);
 	}
 }

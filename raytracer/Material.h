@@ -12,7 +12,10 @@ namespace AGR {
 		float specularIntensity = 0.0f;
 		float reflectionIntensity = 0.0f;
 		float refractionIntensity = 0.0f;
+		float refractionCoeficient = 0.0f;
+		float absorption = 1.0f;
 		float shininess = 0.0f;
 		Sampler* texture = nullptr;
+		glm::vec3 innerColor; //For refractions
 	};
 }
