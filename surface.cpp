@@ -79,7 +79,7 @@ void Surface::Centre( char* a_String, int y1, Pixel color )
 	Print( a_String, x, y1, color );
 }
 
-void Surface::Print( char* a_String, int x1, int y1, Pixel color )
+void Surface::Print( const char* a_String, int x1, int y1, Pixel color )
 {
 	Pixel* t = m_Buffer + x1 + y1 * m_Pitch;
 	int i;

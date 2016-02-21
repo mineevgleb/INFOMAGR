@@ -114,6 +114,7 @@ namespace AGR {
 				reflectedRay.origin = closestHit.hitPt + closestHit.normal * shiftValue;
 				calcReflectedRay(ray.directon, closestHit.normal, reflectedRay.directon);
 				traceRay(reflectedRay, energy * realReflection, depth + 1, colorReflected);
+				colorReflected *= m->reflectionColor;
 			}
 			if (realReflection > 0.3) {
 				color = glm::vec3(1, 0, 0);

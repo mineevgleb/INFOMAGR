@@ -24,6 +24,7 @@
     <ClCompile Include="raytracer\lights\PointLight.cpp" />
     <ClCompile Include="raytracer\Renderer.cpp" />
     <ClCompile Include="raytracer\renederables\Sphere.cpp" />
+    <ClCompile Include="raytracer\renederables\Triangle.cpp" />
     <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp" />
     <ClCompile Include="raytracer\samplers\ImageSampler.cpp" />
     <ClCompile Include="raytracer\util.cpp" />
@@ -38,6 +39,7 @@
     <ClInclude Include="raytracer\Renderer.h" />
     <ClInclude Include="raytracer\renederables\Renderable.h" />
     <ClInclude Include="raytracer\renederables\Sphere.h" />
+    <ClInclude Include="raytracer\renederables\Triangle.h" />
     <ClInclude Include="raytracer\samplers\CheckboardSampler.h" />
     <ClInclude Include="raytracer\samplers\ColorSampler.h" />
     <ClInclude Include="raytracer\samplers\ImageSampler.h" />

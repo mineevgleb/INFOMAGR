@@ -2,7 +2,8 @@
 
 namespace AGR {
 	Sphere::Sphere(Material& m, const glm::vec3& position,
-		float radius, const glm::vec3& rotation) : Renderable(m),
+		float radius, const glm::vec3& rotation, bool invertNormals) 
+		: Renderable(m, invertNormals),
 		m_position(position),
 		m_rotation(rotation),
 		m_radius(radius),
@@ -19,11 +20,12 @@ namespace AGR {
 		float c = glm::dot(sphere2ray, sphere2ray) - m_radius * m_radius;
 		float dsqr = b * b - 4 * a * c;
 		if (dsqr < 0) return false;
-		if (abs(dsqr) < FLT_EPSILON) {
-			float t = -b / 2 * a;
+		if (dsqr < FLT_EPSILON) {
+			float t = -b / (2 * a);
 			if (t > 0) {
 				glm::vec3 intersectPt = r.directon * t + r.origin;
 				glm::vec3 normal = (intersectPt - m_position) / m_radius;
+				if (m_invertNormals) normal *= -1;
 				out.normal = normal;
 				out.ray_length = t;
 				out.p_object = this;
@@ -31,9 +33,9 @@ namespace AGR {
 			}
 		}
 		float d = sqrt(dsqr);
-		float t = (-b - d) / 2 * a;
+		float t = (-b - d) / (2 * a);
 		if (t < 0) {
-			t = (-b + d) / 2 * a;
+			t = (-b + d) / (2 * a);
 		}
 		if (t < 0) {
 			return false;
@@ -42,6 +44,7 @@ namespace AGR {
 		glm::vec3 normal;
 		intersectPt = r.directon * t + r.origin;
 		normal = (intersectPt - m_position) / m_radius;
+		if (m_invertNormals) normal *= -1;
 		out.normal = normal;
 		out.ray_length = t;
 		out.p_object = this;

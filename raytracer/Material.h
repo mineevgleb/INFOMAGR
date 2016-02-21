@@ -16,6 +16,7 @@ namespace AGR {
 		float absorption = 1.0f;
 		float shininess = 0.0f;
 		Sampler* texture = nullptr;
+		glm::vec3 reflectionColor = glm::vec3(1, 1, 1);
 		glm::vec3 innerColor; //For refractions
 	};
 }
