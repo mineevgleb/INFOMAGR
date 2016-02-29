@@ -1,6 +1,5 @@
 #pragma once
 #include "Renderable.h"
-#include "../util.h"
 
 namespace AGR {
 

@@ -1,4 +1,5 @@
 #include "Sphere.h"
+#include "../util.h"
 
 namespace AGR {
 	Sphere::Sphere(Material& m, const glm::vec3& position,

@@ -4,6 +4,7 @@
 #include "raytracer\samplers\ColorSampler.h"
 #include "raytracer/lights/GlobalLight.h"
 #include "raytracer/lights/PointLight.h"
+#include "raytracer/renederables/Triangle.h"
 
 // -----------------------------------------------------------
 // Initialize the application
@@ -16,8 +17,8 @@ void Game::Init()
 	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 1, 0.5)));
 	s.push_back(new AGR::ImageSampler("earth.jpg"));
 	m.push_back(new AGR::Material);
-	m[0]->ambientIntensity = 0.3f;
-	m[0]->diffuseIntensity = 0.7f;
+	m[0]->ambientIntensity = 0.1f;
+	m[0]->diffuseIntensity = 0.9f;
 	//m[0]->reflectionIntensity = 0.7f;
 	m[0]->shininess = 3.0f;
 	m[0]->texture = s[0];
@@ -42,6 +43,11 @@ void Game::Init()
 	r.push_back(new AGR::Sphere(*m[2], glm::vec3(0, -0.5, 11.3), 2));
 	r.push_back(new AGR::Sphere(*m[0], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3(), true));
 	r.push_back(new AGR::Sphere(*m[3], glm::vec3(2.5, 1, 12.3)));
+	r.push_back(new AGR::Triangle(
+		AGR::Vertex(glm::vec3(0, -1, 4), glm::vec2(0, 0)),
+		AGR::Vertex(glm::vec3(1, 1, 5), glm::vec2(0, 1)),
+		AGR::Vertex(glm::vec3(-1, 1, 5), glm::vec2(1, 0)), 
+		*m[2], false, true));
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, 8), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 0, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Renderer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
@@ -50,6 +56,7 @@ void Game::Init()
 	m_scene->addRenderable(*r[2]);
 	m_scene->addRenderable(*r[3]);
 	m_scene->addRenderable(*r[4]);
+	m_scene->addRenderable(*r[5]);
 	m_scene->addLight(*l[0]);
 	m_scene->addLight(*l[1]);
 }
