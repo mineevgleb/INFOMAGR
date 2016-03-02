@@ -27,7 +27,7 @@ namespace AGR
 		if (m_useVertNormals) {
  			out.normal = m_vert[0].normal * baryc.x + 
 				m_vert[1].normal * baryc.y +
-				m_vert[1].normal * baryc.z;
+				m_vert[2].normal * baryc.z;
 		} else {
 			out.normal = m_normal;
 		}
