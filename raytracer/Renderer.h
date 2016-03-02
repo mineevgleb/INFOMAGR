@@ -19,17 +19,18 @@ namespace AGR {
 		const glm::uvec2 & getResolution() const;
 		const unsigned long *getImage() const;
 	private:
-		void traceRay(const Ray& ray, float energy, int depth, glm::vec3& color);
+		float traceRay(const Ray& ray, float energy, int depth, glm::vec3& color);
 		bool getClosestIntersection(const Ray& ray, Intersection& intersect);
 		void gatherLight(const Intersection &hit, const Ray& ray, glm::vec3& color);
 		void traceRefraction(const Intersection &hit, const Ray& ray, glm::vec3& color,
-			float energy, int depth);
+			float energy, int depth, bool isLeaving);
 		bool calcRefractedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			float n1, float n2, glm::vec3& refracted) const;
 		void calcReflectedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			glm::vec3& reflected) const;
 		float calcReflectionComponent(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			float n1, float n2) const;
+		bool isRayLeavingObject(const glm::vec3& ray, const glm::vec3& normal) const;
 
 		std::vector<const Renderable *> m_renderables;
 		std::vector<const Light *> m_lights;
