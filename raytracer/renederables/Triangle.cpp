@@ -25,9 +25,9 @@ namespace AGR
 		glm::vec3 baryc;
 		if (!calcBarycentricCoord(out.hitPt, baryc)) return false;
 		if (m_useVertNormals) {
- 			out.normal = m_vert[0].normal * baryc.x + 
+ 			out.normal = glm::normalize(m_vert[0].normal * baryc.x + 
 				m_vert[1].normal * baryc.y +
-				m_vert[2].normal * baryc.z;
+				m_vert[2].normal * baryc.z);
 		} else {
 			out.normal = m_normal;
 		}

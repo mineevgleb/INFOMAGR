@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "renederables/Renderable.h"
+#include "renederables/Mesh.h"
 #include "lights/Light.h"
 #include "Camera.h"
 
@@ -12,17 +13,20 @@ namespace AGR {
 		~Renderer();
 		void addRenderable(Renderable &r);
 		void removeRenderable(Renderable &r);
+		void addRenderable(Mesh& m);
+		void removeRenderable(Mesh& m);
 		void addLight(Light &l);
 		void removeLight(Light &l);
 		void render();
 		void render(const glm::uvec2 &resolution);
+		void testRay(glm::vec2& px, glm::vec3 &col);
 		const glm::uvec2 & getResolution() const;
 		const unsigned long *getImage() const;
 	private:
 		float traceRay(const Ray& ray, float energy, int depth, glm::vec3& color);
 		bool getClosestIntersection(const Ray& ray, Intersection& intersect);
 		void gatherLight(const Intersection &hit, const Ray& ray, glm::vec3& color);
-		void traceRefraction(const Intersection &hit, const Ray& ray, glm::vec3& color,
+		float traceRefraction(const Intersection &hit, const Ray& ray, glm::vec3& color,
 			float energy, int depth, bool isLeaving);
 		bool calcRefractedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			float n1, float n2, glm::vec3& refracted) const;
@@ -39,7 +43,7 @@ namespace AGR {
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
 
-		const int maxRecursionDepth = 5;
+		const int maxRecursionDepth = 1000;
 		const float shiftValue = FLT_EPSILON * 500;
 	};
 

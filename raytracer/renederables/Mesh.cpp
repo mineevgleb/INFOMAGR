@@ -18,34 +18,12 @@ namespace AGR
 		to.y = from.y;
 	}
 
-	bool Mesh::intersect(const Ray& r, Intersection& out) const
-	{
-		out.ray_length = FLT_MAX;
-		Intersection tmp;
-		bool wasIntersect = false;;
-		for (int i = 0; i < m_triangles.size(); ++i) {
-			if (m_triangles[i]->intersectWithTriangle(r, tmp) && 
-				tmp.ray_length < out.ray_length) {
-				out = tmp;
-				out.p_object = m_triangles[i];
-				wasIntersect = true;
-			}
-		}
-		return wasIntersect;
-	}
-
 	bool Mesh::load(const std::string& path)
 	{
 		Assimp::Importer importer;
 		const aiScene *scene =
 			importer.ReadFile(path.c_str(),
-				aiProcess_JoinIdenticalVertices|
-				aiProcess_Triangulate|
-				aiProcess_GenNormals|
-				aiProcess_PreTransformVertices|
-				aiProcess_FixInfacingNormals |
-				aiProcess_SortByPType |
-				aiProcess_GenUVCoords |
+				aiProcessPreset_TargetRealtime_MaxQuality |
 				aiProcess_TransformUVCoords
 				);
 		if (!scene || ! scene->HasMeshes()) return false;
@@ -61,7 +39,9 @@ namespace AGR
 				(mesh->mVertices[mesh->mFaces[i].mIndices[1]], b.position);
 			assimpVec2glmVec
 				(mesh->mVertices[mesh->mFaces[i].mIndices[2]], c.position);
-
+			a.position /= 44;
+			b.position /= 44;
+			c.position /= 44;
 			if (hasNormals) {
 				assimpVec2glmVec
 					(mesh->mNormals[mesh->mFaces[i].mIndices[0]], a.normal);
@@ -77,10 +57,9 @@ namespace AGR
 				assimpVec2glmVec
 					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[1]], b.texCoord);
 				assimpVec2glmVec
-					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[2]], b.texCoord);
+					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[2]], c.texCoord);
 			}
-			Triangle* t = new Triangle(a, b, c, *m_material, m_invertNormals, hasTexCoord, hasNormals);
-			m_triangles.push_back(new MeshTriangle(t, this, *m_material));
+			m_triangles.push_back(new Triangle(a, b, c, *m_material, m_invertNormals, hasTexCoord, hasNormals));
 		}
 
 		return true;

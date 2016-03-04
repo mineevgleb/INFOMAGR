@@ -38,7 +38,6 @@ namespace AGR {
 		void setUseVertNormals(bool val);
 
 		bool getUseVertNormals() const;
-
 	private:
 		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out) const;
 		void recalcInternalInfo();

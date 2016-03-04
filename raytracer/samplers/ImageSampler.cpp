@@ -16,8 +16,8 @@ namespace AGR {
 	{
 		RGBQUAD col;
 		FreeImage_GetPixelColor(m_bmp,
-			static_cast<unsigned>(texcoord.x * m_resolution.x),
-			static_cast<unsigned>(texcoord.y * m_resolution.y),
+			static_cast<unsigned>((texcoord.x - glm::floor(texcoord.x)) * m_resolution.x),
+			static_cast<unsigned>((texcoord.y - glm::floor(texcoord.y)) * m_resolution.y),
 			&col);
 		outColor.r = col.rgbRed / 255.0f;
 		outColor.g = col.rgbGreen / 255.0f;
