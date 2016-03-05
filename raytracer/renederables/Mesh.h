@@ -10,15 +10,28 @@ namespace AGR {
 	{
 		friend class Renderer;
 	public:
-		Mesh(Material& m, bool invertNormals) 
+		Mesh(Material& m, bool invertNormals = false, bool smooth = true) 
 			: m_material(&m),
-			m_invertNormals(invertNormals){}
+			m_invertNormals(invertNormals),
+			m_isSmooth(smooth),
+			m_scale(1){}
 		~Mesh() { release(); }
-		bool load(const std::string &path);
+		bool load(const std::string& path);
+		void setPosition(const glm::vec3& p, bool update = true);
+		void setRotation(const glm::vec3& r, bool update = true);
+		void setScale(const glm::vec3& s, bool update = true);
 		void release();
 	private:
+		void updateTriangles();
 		std::vector<Triangle *> m_triangles;
 		Material *m_material;
 		bool m_invertNormals;
+		bool m_isSmooth;
+
+		glm::mat4x4 m_modMatrix;
+		glm::mat4x4 m_normModMatrix;
+	    glm::vec3 m_translation;
+		glm::vec3 m_rotation;
+		glm::vec3 m_scale;
 	};
 }

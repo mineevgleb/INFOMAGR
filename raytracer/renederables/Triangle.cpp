@@ -52,7 +52,7 @@ namespace AGR
 		recalcInternalInfo();
 	}
 
-	const Vertex& Triangle::getVertex(int num, const Vertex& val) const
+	const Vertex& Triangle::getVertex(int num) const
 	{
 		return m_vert[num];
 	}

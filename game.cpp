@@ -52,8 +52,12 @@ void Game::Init()
 		AGR::Vertex(glm::vec3(1, 1, 5), glm::vec2(0, 1)),
 		AGR::Vertex(glm::vec3(-1, 1, 5), glm::vec2(1, 0)), 
 		*m[2], false, true));
-	AGR::Mesh* mesh = new AGR::Mesh(*m[1], false);
-	mesh->load("spider.obj");
+	AGR::Mesh* mesh = new AGR::Mesh(*m[2], false, false);
+	mesh->load("teapot.obj");
+	mesh->setScale(glm::vec3(0.5, 1, 0.5));
+	mesh->setPosition(glm::vec3(0, 1, 0));
+	mesh->setRotation(glm::vec3(0, 180, 0));
+	mesh->setScale(glm::vec3(1, 0.5, 1));
 	
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 0, 40), glm::vec3(1000, 1000, 1000)));

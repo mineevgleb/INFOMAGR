@@ -29,7 +29,7 @@ namespace AGR {
 
 		void setVertex(int num, const Vertex& val);
 
-		const Vertex& getVertex(int num, const Vertex& val) const;
+		const Vertex& getVertex(int num) const;
 
 		void setUseTextureCoords(bool val);
 
