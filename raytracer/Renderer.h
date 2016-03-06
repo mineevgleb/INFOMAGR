@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "renederables/Renderable.h"
+#include "renederables/Primitive.h"
 #include "renederables/Mesh.h"
 #include "lights/Light.h"
 #include "Camera.h"
@@ -11,8 +11,8 @@ namespace AGR {
 	public:
 		Renderer(const Camera &c, const glm::vec3& backgroundColor, const glm::vec2& resolution);
 		~Renderer();
-		void addRenderable(Renderable &r);
-		void removeRenderable(Renderable &r);
+		void addRenderable(Primitive &r);
+		void removeRenderable(Primitive &r);
 		void addRenderable(Mesh& m);
 		void removeRenderable(Mesh& m);
 		void addLight(Light &l);
@@ -36,14 +36,14 @@ namespace AGR {
 			float n1, float n2) const;
 		bool isRayLeavingObject(const glm::vec3& ray, const glm::vec3& normal) const;
 
-		std::vector<const Renderable *> m_renderables;
+		std::vector<const Primitive *> m_renderables;
 		std::vector<const Light *> m_lights;
 		unsigned long *m_image;
 		glm::uvec2 m_resolution;
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
 
-		const int maxRecursionDepth = 1000;
+		const int maxRecursionDepth = 30;
 		const float shiftValue = FLT_EPSILON * 500;
 	};
 

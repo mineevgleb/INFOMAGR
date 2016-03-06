@@ -1,15 +1,15 @@
 #pragma once
-#include "Renderable.h"
+#include "Primitive.h"
 
 namespace AGR {
 
-	class Sphere : public Renderable {
+	class Sphere : public Primitive {
 	public:
 		Sphere(Material& m, const glm::vec3& position = glm::vec3(), float radius = 1.0f,
-			const glm::vec3& rotation = glm::vec3(), bool invertNormals = false);
+			const glm::vec3& rotation = glm::vec3());
 
-		virtual bool intersect(const Ray &r, Intersection &out) const override;
-		void getTexCoord(glm::vec3 pt, glm::vec2& out) const override;
+		virtual bool intersect(Intersection& intersect) const override;
+		void getTexCoordAndNormal(Intersection& intersect) const override;
 
 		const glm::vec3& getPosition() const;
 		void setPosition(const glm::vec3& position);

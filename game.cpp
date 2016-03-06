@@ -42,28 +42,28 @@ void Game::Init()
 	//m[3]->ambientIntensity = 0.1;
 	//m[3]->diffuseIntensity = 0.2;
 	m[3]->reflectionColor = glm::vec3(1, 1, 1);
-	r.push_back(new AGR::Sphere(*m[1], glm::vec3(-1, 0, 5)));
+	r.push_back(new AGR::Sphere(*m[1], glm::vec3(1, 1, 0), 0.1f));
 	r.push_back(new AGR::Sphere(*m[0], glm::vec3(2, 0, 10), 0.5f));
 	r.push_back(new AGR::Sphere(*m[2], glm::vec3(0, -0.5, 11.3), 2));
-	r.push_back(new AGR::Sphere(*m[2], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3(), true));
+	r.push_back(new AGR::Sphere(*m[0], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3()));
 	r.push_back(new AGR::Sphere(*m[3], glm::vec3(2.5, 1, 12.3)));
 	r.push_back(new AGR::Triangle(
-		AGR::Vertex(glm::vec3(0, -1, 4), glm::vec2(0, 0)),
-		AGR::Vertex(glm::vec3(1, 1, 5), glm::vec2(0, 1)),
-		AGR::Vertex(glm::vec3(-1, 1, 5), glm::vec2(1, 0)), 
-		*m[2], false, true));
+		AGR::Vertex(glm::vec3(0, 0, 40), glm::vec2(0, 0)),
+		AGR::Vertex(glm::vec3(10, 0, 50), glm::vec2(0, 1)),
+		AGR::Vertex(glm::vec3(-10, 0, 50), glm::vec2(1, 0)), 
+		*m[0], true, false, false));
 	AGR::Mesh* mesh = new AGR::Mesh(*m[1]);
 	mesh->load("teapot.obj");
 	//mesh->setRotation(glm::vec3(0, 45, 0));
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
-	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 0, 40), glm::vec3(1000, 1000, 1000)));
+	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Renderer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
 	//m_scene->addRenderable(*r[0]);
 	//m_scene->addRenderable(*r[1]);
 	//m_scene->addRenderable(*r[2]);
 	m_scene->addRenderable(*r[3]);
 	//m_scene->addRenderable(*r[4]);
-	//m_scene->addRenderable(*r[5]);
+	m_scene->addRenderable(*r[5]);
 	m_scene->addRenderable(*mesh);
 	m_scene->addLight(*l[0]);
 	m_scene->addLight(*l[1]);

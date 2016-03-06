@@ -14,13 +14,13 @@ namespace AGR {
 		delete[] m_image;
 	}
 
-	void Renderer::addRenderable(Renderable& r)
+	void Renderer::addRenderable(Primitive& r)
 	{
 		r.m_idx = m_renderables.size();
 		m_renderables.push_back(&r);
 	}
 
-	void Renderer::removeRenderable(Renderable& r)
+	void Renderer::removeRenderable(Primitive& r)
 	{
 		if (r.m_idx > -1 && r.m_idx < m_renderables.size()) {
 			m_renderables[r.m_idx] = *m_renderables.rbegin();
@@ -141,7 +141,7 @@ namespace AGR {
 					Ray reflectedRay;
 					reflectedRay.origin = closestHit.hitPt + closestHit.normal * shiftValue;
 					reflectedRay.surroundMaterial = ray.surroundMaterial;
-					calcReflectedRay(ray.directon, closestHit.normal, reflectedRay.directon);
+					calcReflectedRay(ray.direction, closestHit.normal, reflectedRay.direction);
 					traceRay(reflectedRay, energy * totalReflection, depth + 1, colorReflected);
 					colorReflected *= m->reflectionColor;
 				} else {
@@ -174,9 +174,10 @@ namespace AGR {
 	{
 		intersect.ray_length = FLT_MAX;
 		bool wasHit = false;
+		Intersection cur;
+		cur.ray = ray;
 		for (auto r : m_renderables) {
-			Intersection cur;
-			if (r->intersect(ray, cur)) {
+			if (r->intersect(cur)) {
 				wasHit = true;
 				if (cur.ray_length > 0 && cur.ray_length < intersect.ray_length) {
 					intersect = cur;
@@ -185,7 +186,7 @@ namespace AGR {
 		}
 		if (wasHit)
 		{
-			intersect.hitPt = ray.origin + ray.directon * intersect.ray_length;
+			intersect.p_object->getTexCoordAndNormal(intersect);
 		}
 		return wasHit;
 	}
@@ -196,11 +197,7 @@ namespace AGR {
 		const Material* m = hit.p_object->getMaterial();
 		glm::vec3 colorInPt;
 		if (m->texture && (m->ambientIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON)) {
-			glm::vec2 texCoord;
-			if (m->isTexCoordRequired()) {
-				hit.p_object->getTexCoord(hit.hitPt, texCoord);
-			}
-			m->texture->getColor(texCoord, colorInPt);
+			m->texture->getColor(hit.texCoord, colorInPt);
 		}
 		color += colorInPt * m->ambientIntensity;
 		if (m->specularIntensity > 0 || glm::length(colorInPt) > 0) {
@@ -213,20 +210,20 @@ namespace AGR {
 				l->getDirectionToTheLight(shiftedPt, distToLight);
 				Ray rayToLight;
 				rayToLight.origin = shiftedPt;
-				rayToLight.directon = distToLight.direction;
+				rayToLight.direction = distToLight.direction;
 				Intersection intersect;
 				bool isIntersect = getClosestIntersection(rayToLight, intersect);
 				if (!isIntersect || intersect.ray_length > distToLight.length) {
 					float diffuseScaler =
-						glm::clamp(glm::dot(hit.normal, rayToLight.directon), 0.0f, 1.0f);
+						glm::clamp(glm::dot(hit.normal, rayToLight.direction), 0.0f, 1.0f);
 					color += colorInPt * lightCol * diffuseScaler * m->diffuseIntensity;
 				}
 				if (m->specularIntensity > FLT_EPSILON) {
 					glm::vec3 reflected =
-						2 * glm::dot(hit.normal, rayToLight.directon) * hit.normal 
-						- rayToLight.directon;
+						2 * glm::dot(hit.normal, rayToLight.direction) * hit.normal 
+						- rayToLight.direction;
 					float specularScaler = 
-						glm::clamp(glm::dot(reflected, -ray.directon), 0.0f, 1.0f);
+						glm::clamp(glm::dot(reflected, -ray.direction), 0.0f, 1.0f);
 					color += lightCol *
 						glm::pow(specularScaler, m->shininess) *
 						m->specularIntensity;
@@ -255,16 +252,16 @@ namespace AGR {
 		}
 		refractedRay.origin = hit.hitPt - hit.normal * shiftValue;
 		float refractionComp;
-		if (!calcRefractedRay(ray.directon, hit.normal, refrCoef1, 
-			refrCoef2, refractedRay.directon)) {
+		if (!calcRefractedRay(ray.direction, hit.normal, refrCoef1, 
+			refrCoef2, refractedRay.direction)) {
 			color = glm::vec3();
 			return 0;
 		} 
 		if (isLeaving) {
-			refractionComp = 1 - calcReflectionComponent(refractedRay.directon,
+			refractionComp = 1 - calcReflectionComponent(refractedRay.direction,
 				hit.normal, refrCoef1, refrCoef2);
 		} else {
-			refractionComp = 1 - calcReflectionComponent(ray.directon,
+			refractionComp = 1 - calcReflectionComponent(ray.direction,
 				hit.normal, refrCoef1, refrCoef2);
 		}
 		traceRay(refractedRay, energy * refractionComp, depth + 1, color);

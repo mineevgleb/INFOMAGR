@@ -19,7 +19,7 @@ public:
 	void KeyDown( int _Key ) { /* implement if you want to handle keys */ }
 private:
 	Surface* screen;
-	std::vector<AGR::Renderable *> r;
+	std::vector<AGR::Primitive *> r;
 	std::vector<AGR::Material *> m;
 	std::vector<AGR::Sampler *> s;
 	std::vector<AGR::Light *> l;

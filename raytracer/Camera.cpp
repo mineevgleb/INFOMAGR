@@ -12,7 +12,7 @@ namespace AGR {
 	void Camera::produceRay(const glm::vec2 position, Ray & out) const
 	{
 		out.origin = m_position;
-		out.directon = glm::normalize(m_frontVec + 
+		out.direction = glm::normalize(m_frontVec + 
 			m_rightVec * (position.x - 0.5f) - m_upVec * (position.y - 0.5f));
 	}
 

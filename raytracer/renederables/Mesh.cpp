@@ -20,8 +20,7 @@ namespace AGR
 		to.y = from.y;
 	}
 
-	bool Mesh::load(const std::string& path, 
-		NormalType nt, bool invertNormals)
+	bool Mesh::load(const std::string& path, NormalType nt)
 	{
 		Assimp::Importer importer;
 		const aiScene *scene =
@@ -62,8 +61,8 @@ namespace AGR
 				assimpVec2glmVec
 					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[2]], c.texCoord);
 			}
-			m_triangles.push_back(new Triangle(a, b, c, *m_material, 
-				invertNormals, hasTexCoord, hasNormals & (nt != FLAT)));
+			m_triangles.push_back(new Triangle(a, b, c, *m_material, hasTexCoord, 
+				hasNormals & (nt != FLAT)));
 			if (nt == CONSISTENT) {
 				facesForVertex[mesh->mFaces[i].mIndices[0]].push_back(i);
 				facesForVertex[mesh->mFaces[i].mIndices[1]].push_back(i);

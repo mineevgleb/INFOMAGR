@@ -3,8 +3,8 @@
 
 namespace AGR {
 	Sphere::Sphere(Material& m, const glm::vec3& position,
-		float radius, const glm::vec3& rotation, bool invertNormals) 
-		: Renderable(m, invertNormals),
+		float radius, const glm::vec3& rotation) 
+		: Primitive(m),
 		m_position(position),
 		m_rotation(rotation),
 		m_radius(radius),
@@ -13,23 +13,21 @@ namespace AGR {
 		rotateMat(m_rotation, m_rotationMatrix);
 	}
 
-	bool Sphere::intersect(const Ray & r, Intersection& out) const
+	bool Sphere::intersect(Intersection& intersect) const
 	{
+		Ray& r = intersect.ray;
 		glm::vec3 sphere2ray = r.origin - m_position;
-		float a = glm::dot(r.directon, r.directon);
-		float b = glm::dot(r.directon * 2.0f, sphere2ray);
+		float a = glm::dot(r.direction, r.direction);
+		float b = glm::dot(r.direction * 2.0f, sphere2ray);
 		float c = glm::dot(sphere2ray, sphere2ray) - m_radius * m_radius;
 		float dsqr = b * b - 4 * a * c;
 		if (dsqr < 0) return false;
 		if (dsqr < FLT_EPSILON) {
 			float t = -b / (2 * a);
 			if (t > 0) {
-				glm::vec3 intersectPt = r.directon * t + r.origin;
-				glm::vec3 normal = (intersectPt - m_position) / m_radius;
-				if (m_invertNormals) normal *= -1;
-				out.normal = normal;
-				out.ray_length = t;
-				out.p_object = this;
+				intersect.hitPt = r.direction * t + r.origin;
+				intersect.ray_length = t;
+				intersect.p_object = this;
 				return true;
 			}
 		}
@@ -43,24 +41,27 @@ namespace AGR {
 		}
 		glm::vec3 intersectPt;
 		glm::vec3 normal;
-		intersectPt = r.directon * t + r.origin;
-		normal = (intersectPt - m_position) / m_radius;
-		if (m_invertNormals) normal *= -1;
-		out.normal = normal;
-		out.ray_length = t;
-		out.p_object = this;
+		intersect.hitPt = r.direction * t + r.origin;
+		intersect.ray_length = t;
+		intersect.p_object = this;
 		return true;
 	}
 
-	void Sphere::getTexCoord(glm::vec3 pt, glm::vec2& out) const
+	void Sphere::getTexCoordAndNormal(Intersection& intersect) const
 	{
-		pt -= m_position;
-		pt /= m_radius;
-		glm::vec4 rotatedCoord = glm::vec4(pt.x, pt.y, pt.z, 1);
-		rotatedCoord = m_rotationMatrix * rotatedCoord;
-		pt = glm::vec3(rotatedCoord);
-		out.x = 0.5f + glm::atan(-pt.z, -pt.x) / (2 * M_PI);
-		out.y = 0.5f - glm::asin(-pt.y) / M_PI;
+		if (m_material->isTexCoordRequired()) {
+			glm::vec3 hitPt = intersect.hitPt;
+			hitPt -= m_position;
+			hitPt /= m_radius;
+			glm::vec4 rotatedCoord = glm::vec4(hitPt, 1);
+			rotatedCoord = m_rotationMatrix * rotatedCoord;
+			intersect.texCoord.x = 0.5f + glm::atan(-rotatedCoord.z, -rotatedCoord.x) / (2 * M_PI);
+			intersect.texCoord.y = 0.5f - glm::asin(-rotatedCoord.y) / M_PI;
+		}
+		intersect.normal = (intersect.hitPt - m_position) / m_radius;
+		if (glm::dot(-intersect.ray.direction, intersect.normal) < 0) {
+			intersect.normal *= -1;
+		}
 	}
 
 	const glm::vec3& Sphere::getPosition() const

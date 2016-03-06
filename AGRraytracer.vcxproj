@@ -39,7 +39,7 @@
     <ClInclude Include="raytracer\Material.h" />
     <ClInclude Include="raytracer\Renderer.h" />
     <ClInclude Include="raytracer\renederables\Mesh.h" />
-    <ClInclude Include="raytracer\renederables\Renderable.h" />
+    <ClInclude Include="raytracer\renederables\Primitive.h" />
     <ClInclude Include="raytracer\renederables\Sphere.h" />
     <ClInclude Include="raytracer\renederables\Triangle.h" />
     <ClInclude Include="raytracer\samplers\CheckboardSampler.h" />

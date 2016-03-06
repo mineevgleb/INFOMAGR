@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderable.h" 
+#include "Primitive.h" 
 #include "Triangle.h"
 #include <vector>
 #include <string>
@@ -18,8 +18,7 @@ namespace AGR {
 			: m_material(&m),
 			m_scale(1){}
 		~Mesh() { release(); }
-		bool load(const std::string& path, 
-			NormalType nt = CONSISTENT, bool invertNormals = false);
+		bool load(const std::string& path, NormalType nt = CONSISTENT);
 		void setPosition(const glm::vec3& p, bool update = true);
 		void setRotation(const glm::vec3& r, bool update = true);
 		void setScale(const glm::vec3& s, bool update = true);

@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderable.h"
+#include "Primitive.h"
 
 namespace AGR {
 	struct Vertex
@@ -19,15 +19,16 @@ namespace AGR {
 	};
 
 
-	class Triangle : public Renderable {
+	class Triangle : public Primitive {
 	public:
+		//when limit is false triangle becomes a plane
 		Triangle(const Vertex& v1, const Vertex& v2, const Vertex& v3,
-		         Material& m, bool invertNormals = false,
-		         bool useTextureCoords = false, bool useVertNormals = false);
+		         Material& m, bool useTextureCoords = true, 
+				 bool useVertNormals = false, bool limit = true);
 
 
-		bool intersect(const Ray &r, Intersection &out) const override;
-		void getTexCoord(glm::vec3 pt, glm::vec2& out) const override;
+		bool intersect(Intersection& intersect) const override;
+		void getTexCoordAndNormal(Intersection& intersect) const override;
 
 		void setVertex(int num, const Vertex& val);
 
@@ -43,7 +44,7 @@ namespace AGR {
 
 		const glm::vec3& getFaceNormal() const;
 	private:
-		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out) const;
+		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out, bool limit) const;
 		void recalcInternalInfo();
 		Vertex m_vert[3];
 		glm::vec3 m_v0v1;
@@ -51,6 +52,7 @@ namespace AGR {
 		glm::vec3 m_normal;
 		bool m_useTextureCoords;
 		bool m_useVertNormals;
+		bool m_limit;
 
 		//for barycentric coord
 		float m_d00, m_d01, m_d11, m_invdenom;
