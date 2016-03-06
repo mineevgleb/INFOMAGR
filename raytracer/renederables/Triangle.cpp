@@ -1,4 +1,5 @@
 #include "Triangle.h"
+#include "../util.h"
 
 namespace AGR
 {
@@ -25,9 +26,26 @@ namespace AGR
 		glm::vec3 baryc;
 		if (!calcBarycentricCoord(out.hitPt, baryc)) return false;
 		if (m_useVertNormals) {
- 			out.normal = glm::normalize(m_vert[0].normal * baryc.x + 
+			out.normal = glm::normalize(m_vert[0].normal * baryc.x +
 				m_vert[1].normal * baryc.y +
 				m_vert[2].normal * baryc.z);
+			if (m_vert[0].alpha > 0) {
+				//some black magic with consistent normals calculation
+				float alphaAtPt = m_vert[0].alpha * baryc.x +
+					m_vert[1].alpha * baryc.y +
+					m_vert[2].alpha * baryc.z;
+				float q = 1.0f - (2.0f / M_PI) * alphaAtPt;
+				q *= q;
+				q /= 1.0f + 2.0f * (1.0f - (2.0f / M_PI) * alphaAtPt);
+				if (glm::dot(-r.directon, m_normal) < 0) {
+					out.normal *= -1;
+				}
+				float b = glm::dot(-r.directon, out.normal);
+				float g = 1.0f + q * (b - 1);
+				float p = glm::sqrt((q * (1 + g)) / (1 + b));
+				glm::vec3 refl = (g + p * b) * out.normal + p * r.directon;
+				out.normal = glm::normalize(refl - r.directon);
+			}
 		} else {
 			out.normal = m_normal;
 		}
@@ -77,6 +95,11 @@ namespace AGR
 		return m_useVertNormals;
 	}
 
+	const glm::vec3& Triangle::getFaceNormal() const
+	{
+		return m_normal;
+	}
+
 	bool Triangle::calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out) const 
 	{
 		glm::vec3 v0pt = pt - m_vert[0].position;
@@ -99,5 +122,10 @@ namespace AGR
 		m_d01 = glm::dot(m_v0v1, m_v0v2);
 		m_d11 = glm::dot(m_v0v2, m_v0v2);
 		m_invdenom = 1.0f / (m_d00 * m_d11 - m_d01 * m_d01);
+		if (m_invertNormals) {
+			m_normal *= -1;
+			for (int i = 0; i < 3; i++)
+				m_vert[i].normal *= -1;
+		}
 	}
 }

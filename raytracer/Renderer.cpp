@@ -111,9 +111,6 @@ namespace AGR {
 		Intersection closestHit;
 		bool isInObject = ray.surroundMaterial != nullptr;
 		if (getClosestIntersection(ray, closestHit)) {
-			if (isInObject) {
-				closestHit.normal *= -1;
-			}
 			glm::vec3 colorSelf;
 			gatherLight(closestHit, ray, colorSelf);
 
@@ -244,11 +241,6 @@ namespace AGR {
 	{
 		if (energy < 1.0 / 255 || depth > maxRecursionDepth) {
 			color = glm::vec3();
-			return 1;
-		}
-		volatile float cnd = glm::dot(hit.normal, -ray.directon);
-		if (cnd < 0) {
-			color = glm::vec3(1, 0, 0);
 			return 1;
 		}
 		Ray refractedRay;

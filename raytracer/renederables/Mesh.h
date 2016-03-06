@@ -5,18 +5,21 @@
 #include <string>
 
 namespace AGR {
-	class MeshTriangle;
+	enum NormalType
+	{
+		FLAT, SMOOTH, CONSISTENT
+	};
+
 	class Mesh
 	{
 		friend class Renderer;
 	public:
-		Mesh(Material& m, bool invertNormals = false, bool smooth = true) 
+		Mesh(Material& m) 
 			: m_material(&m),
-			m_invertNormals(invertNormals),
-			m_isSmooth(smooth),
 			m_scale(1){}
 		~Mesh() { release(); }
-		bool load(const std::string& path);
+		bool load(const std::string& path, 
+			NormalType nt = CONSISTENT, bool invertNormals = false);
 		void setPosition(const glm::vec3& p, bool update = true);
 		void setRotation(const glm::vec3& r, bool update = true);
 		void setScale(const glm::vec3& s, bool update = true);
@@ -25,8 +28,6 @@ namespace AGR {
 		void updateTriangles();
 		std::vector<Triangle *> m_triangles;
 		Material *m_material;
-		bool m_invertNormals;
-		bool m_isSmooth;
 
 		glm::mat4x4 m_modMatrix;
 		glm::mat4x4 m_normModMatrix;

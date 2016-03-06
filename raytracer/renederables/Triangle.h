@@ -9,11 +9,13 @@ namespace AGR {
 			const glm::vec3& normal = glm::vec3(0, 1, 0)) :
 			position(position),
 			texCoord(texCoord),
-			normal(normal)
+			normal(normal),
+			alpha(-1.0f)
 		{}
 		glm::vec3 position;
 		glm::vec2 texCoord;
 		glm::vec3 normal;
+		float alpha; //used for consistent normals
 	};
 
 
@@ -38,6 +40,8 @@ namespace AGR {
 		void setUseVertNormals(bool val);
 
 		bool getUseVertNormals() const;
+
+		const glm::vec3& getFaceNormal() const;
 	private:
 		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out) const;
 		void recalcInternalInfo();

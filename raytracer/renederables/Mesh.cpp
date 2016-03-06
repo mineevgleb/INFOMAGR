@@ -3,6 +3,7 @@
 #include <assimp/scene.h>           
 #include <assimp/postprocess.h>
 #include "../util.h"
+#include <vector>
 
 namespace AGR
 {
@@ -19,7 +20,8 @@ namespace AGR
 		to.y = from.y;
 	}
 
-	bool Mesh::load(const std::string& path)
+	bool Mesh::load(const std::string& path, 
+		NormalType nt, bool invertNormals)
 	{
 		Assimp::Importer importer;
 		const aiScene *scene =
@@ -32,6 +34,9 @@ namespace AGR
 		if (!mesh->HasFaces()) return false;
 		bool hasNormals = mesh->HasNormals();
 		bool hasTexCoord = mesh->HasTextureCoords(0);
+		std::vector<std::vector<int>> facesForVertex(mesh->mNumVertices);
+		std::vector<std::vector<int>> numInFaceForVertex(mesh->mNumVertices);
+
 		for (int i = 0; i < mesh->mNumFaces; ++i) {
 			Vertex a, b, c;
 			assimpVec2glmVec
@@ -58,7 +63,34 @@ namespace AGR
 					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[2]], c.texCoord);
 			}
 			m_triangles.push_back(new Triangle(a, b, c, *m_material, 
-				m_invertNormals, hasTexCoord, hasNormals & m_isSmooth));
+				invertNormals, hasTexCoord, hasNormals & (nt != FLAT)));
+			if (nt == CONSISTENT) {
+				facesForVertex[mesh->mFaces[i].mIndices[0]].push_back(i);
+				facesForVertex[mesh->mFaces[i].mIndices[1]].push_back(i);
+				facesForVertex[mesh->mFaces[i].mIndices[2]].push_back(i);
+				numInFaceForVertex[mesh->mFaces[i].mIndices[0]].push_back(0);
+				numInFaceForVertex[mesh->mFaces[i].mIndices[1]].push_back(1);
+				numInFaceForVertex[mesh->mFaces[i].mIndices[2]].push_back(2);
+			}
+		}
+
+		if (nt == CONSISTENT) {
+			for (int i = 0; i < facesForVertex.size(); ++i) {
+				glm::vec3 vertNormal;
+				assimpVec2glmVec(mesh->mNormals[i], vertNormal);
+				float minCos = 2.0f;
+				for (int facenum : facesForVertex[i]) {
+					float curCos = glm::dot(vertNormal, m_triangles[facenum]->getFaceNormal());
+					if (curCos < minCos) minCos = curCos;
+				}
+				for (int j = 0; j < facesForVertex[i].size(); ++j) {
+					int faceNum = facesForVertex[i][j];
+					int vertNum = numInFaceForVertex[i][j];
+					Vertex v = m_triangles[faceNum]->getVertex(vertNum);
+					v.alpha = glm::acos(minCos) * (1.0f + 0.03632f * (1 - minCos) * (1 - minCos));
+					m_triangles[faceNum]->setVertex(vertNum, v);
+				}
+			}
 		}
 
 		return true;

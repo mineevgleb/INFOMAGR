@@ -45,20 +45,16 @@ void Game::Init()
 	r.push_back(new AGR::Sphere(*m[1], glm::vec3(-1, 0, 5)));
 	r.push_back(new AGR::Sphere(*m[0], glm::vec3(2, 0, 10), 0.5f));
 	r.push_back(new AGR::Sphere(*m[2], glm::vec3(0, -0.5, 11.3), 2));
-	r.push_back(new AGR::Sphere(*m[0], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3(), true));
+	r.push_back(new AGR::Sphere(*m[2], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3(), true));
 	r.push_back(new AGR::Sphere(*m[3], glm::vec3(2.5, 1, 12.3)));
 	r.push_back(new AGR::Triangle(
 		AGR::Vertex(glm::vec3(0, -1, 4), glm::vec2(0, 0)),
 		AGR::Vertex(glm::vec3(1, 1, 5), glm::vec2(0, 1)),
 		AGR::Vertex(glm::vec3(-1, 1, 5), glm::vec2(1, 0)), 
 		*m[2], false, true));
-	AGR::Mesh* mesh = new AGR::Mesh(*m[2], false, false);
+	AGR::Mesh* mesh = new AGR::Mesh(*m[1]);
 	mesh->load("teapot.obj");
-	mesh->setScale(glm::vec3(0.5, 1, 0.5));
-	mesh->setPosition(glm::vec3(0, 1, 0));
-	mesh->setRotation(glm::vec3(0, 180, 0));
-	mesh->setScale(glm::vec3(1, 0.5, 1));
-	
+	//mesh->setRotation(glm::vec3(0, 45, 0));
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 0, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Renderer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
