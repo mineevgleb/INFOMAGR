@@ -36,7 +36,7 @@ namespace AGR
 		std::vector<std::vector<int>> facesForVertex(mesh->mNumVertices);
 		std::vector<std::vector<int>> numInFaceForVertex(mesh->mNumVertices);
 
-		for (int i = 0; i < mesh->mNumFaces; ++i) {
+		for (size_t i = 0; i < mesh->mNumFaces; ++i) {
 			Vertex a, b, c;
 			assimpVec2glmVec
 				(mesh->mVertices[mesh->mFaces[i].mIndices[0]], a.position);
@@ -90,27 +90,27 @@ namespace AGR
 					m_triangles[faceNum]->setVertex(vertNum, v);
 				}
 			}
+			for (auto& t:m_triangles) {
+				t->commitTransformations();
+			}
 		}
 
 		return true;
 	}
 
-	void Mesh::setPosition(const glm::vec3& p, bool update)
+	void Mesh::setPosition(const glm::vec3& p)
 	{
 		m_translation = p;
-		if (update) updateTriangles();
 	}
 
-	void Mesh::setRotation(const glm::vec3& r, bool update)
+	void Mesh::setRotation(const glm::vec3& r)
 	{
 		m_rotation = r;
-		if (update) updateTriangles();
 	}
 
-	void Mesh::setScale(const glm::vec3& s, bool update)
+	void Mesh::setScale(const glm::vec3& s)
 	{
 		m_scale = s;
-		if (update) updateTriangles();
 	}
 
 	void Mesh::release()
@@ -120,7 +120,7 @@ namespace AGR
 		m_triangles.clear();
 	}
 
-	void Mesh::updateTriangles()
+	void Mesh::commitTransformations()
 	{
 		glm::mat4x4 newModMatrix;
 		glm::mat4x4 newNormModMatrix;

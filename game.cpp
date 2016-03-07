@@ -88,8 +88,8 @@ void Game::Shutdown()
 void Game::Tick( float _DT )
 {
 	DWORD before = GetTickCount();
-	static int i = 0;
-	if (!i++) 
+	//static int i = 0;
+	//if (!i++) 
 		m_scene->render();
 	DWORD after = GetTickCount();
 	memcpy(screen->GetBuffer(), m_scene->getImage(),

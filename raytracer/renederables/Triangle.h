@@ -43,9 +43,10 @@ namespace AGR {
 		bool getUseVertNormals() const;
 
 		const glm::vec3& getFaceNormal() const;
+
+		void commitTransformations();
 	private:
 		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out, bool limit) const;
-		void recalcInternalInfo();
 		Vertex m_vert[3];
 		glm::vec3 m_v0v1;
 		glm::vec3 m_v0v2;

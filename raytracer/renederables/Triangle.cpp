@@ -13,7 +13,7 @@ namespace AGR
 		m_vert[0] = v1;
 		m_vert[1] = v2;
 		m_vert[2] = v3;
-		recalcInternalInfo();
+		commitTransformations();
 	}
 
 	bool Triangle::intersect(Intersection& intersect) const
@@ -51,6 +51,7 @@ namespace AGR
 			}
 			if (m_vert[0].alpha > 0) {
 				//some black magic with consistent normals calculation
+				//algorithm from "Consistent Normal Interpolation", Reshetov et al.
 				float alphaAtPt = m_vert[0].alpha * baryc.x +
 					m_vert[1].alpha * baryc.y +
 					m_vert[2].alpha * baryc.z;
@@ -76,7 +77,6 @@ namespace AGR
 	void Triangle::setVertex(int num, const Vertex& val)
 	{
 		m_vert[num] = val;
-		recalcInternalInfo();
 	}
 
 	const Vertex& Triangle::getVertex(int num) const
@@ -122,14 +122,24 @@ namespace AGR
 		return true;
 	}
 
-	void Triangle::recalcInternalInfo()
+	void Triangle::commitTransformations()
 	{
 		m_v0v1 = m_vert[1].position - m_vert[0].position;
 		m_v0v2 = m_vert[2].position - m_vert[0].position;
-		m_normal = glm::normalize(glm::cross(m_v0v1, m_v0v2));
+		glm::vec3 crossproduct = glm::cross(m_v0v1, m_v0v2);
+		m_normal = glm::normalize(crossproduct);
 		m_d00 = glm::dot(m_v0v1, m_v0v1);
 		m_d01 = glm::dot(m_v0v1, m_v0v2);
 		m_d11 = glm::dot(m_v0v2, m_v0v2);
 		m_invdenom = 1.0f / (m_d00 * m_d11 - m_d01 * m_d01);
+		glm::vec3 minPt;
+		minPt.x = fmin(fmin(m_vert[0].position.x, m_vert[1].position.x), m_vert[2].position.x);
+		minPt.y = fmin(fmin(m_vert[0].position.y, m_vert[1].position.y), m_vert[2].position.y);
+		minPt.z = fmin(fmin(m_vert[0].position.z, m_vert[1].position.z), m_vert[2].position.z);
+		glm::vec3 maxPt;
+		maxPt.x = fmax(fmax(m_vert[0].position.x, m_vert[1].position.x), m_vert[2].position.x);
+		maxPt.y = fmax(fmax(m_vert[0].position.y, m_vert[1].position.y), m_vert[2].position.y);
+		maxPt.z = fmax(fmax(m_vert[0].position.z, m_vert[1].position.z), m_vert[2].position.z);
+		m_aabb = AABB(minPt, maxPt);
 	}
 }

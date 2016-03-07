@@ -19,12 +19,12 @@ namespace AGR {
 			m_scale(1){}
 		~Mesh() { release(); }
 		bool load(const std::string& path, NormalType nt = CONSISTENT);
-		void setPosition(const glm::vec3& p, bool update = true);
-		void setRotation(const glm::vec3& r, bool update = true);
-		void setScale(const glm::vec3& s, bool update = true);
+		void setPosition(const glm::vec3& p);
+		void setRotation(const glm::vec3& r);
+		void setScale(const glm::vec3& s);
+		void commitTransformations();
 		void release();
 	private:
-		void updateTriangles();
 		std::vector<Triangle *> m_triangles;
 		Material *m_material;
 

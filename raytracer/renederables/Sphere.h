@@ -20,7 +20,9 @@ namespace AGR {
 		float getRadius() const;
 		void setRadius(float radius);
 
+		void commitTransformations();
 	private:
+		bool m_modified;
 		glm::vec3 m_position;
 		glm::vec3 m_rotation;
 		float m_radius;

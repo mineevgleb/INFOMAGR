@@ -3,14 +3,16 @@
 
 namespace AGR {
 	Sphere::Sphere(Material& m, const glm::vec3& position,
-		float radius, const glm::vec3& rotation) 
+		float radius, const glm::vec3& rotation)
 		: Primitive(m),
+		m_modified(false),
 		m_position(position),
 		m_rotation(rotation),
 		m_radius(radius),
 		m_rotationMatrix()
 	{
 		rotateMat(m_rotation, m_rotationMatrix);
+		commitTransformations();
 	}
 
 	bool Sphere::intersect(Intersection& intersect) const
@@ -72,6 +74,7 @@ namespace AGR {
 	void Sphere::setPosition(const glm::vec3& position)
 	{
 		m_position = position;
+		m_modified = true;
 	}
 
 	const glm::vec3& Sphere::getRotation() const
@@ -94,5 +97,13 @@ namespace AGR {
 	void Sphere::setRadius(float radius)
 	{
 		m_radius = radius;
+		m_modified = true;
+	}
+
+	void Sphere::commitTransformations()
+	{
+		glm::vec3 minPt = m_position - glm::vec3(m_radius);
+		glm::vec3 maxPt = m_position + glm::vec3(m_radius);
+		m_aabb = AABB(minPt, maxPt);
 	}
 }

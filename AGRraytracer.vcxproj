@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="raytracer\AABB.cpp" />
+    <ClCompile Include="raytracer\BVH.cpp" />
     <ClCompile Include="raytracer\Camera.cpp" />
     <ClCompile Include="raytracer\lights\GlobalLight.cpp" />
     <ClCompile Include="raytracer\lights\PointLight.cpp" />
@@ -31,6 +33,8 @@
     <ClCompile Include="raytracer\util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="raytracer\AABB.h" />
+    <ClInclude Include="raytracer\BVH.h" />
     <ClInclude Include="raytracer\Camera.h" />
     <ClInclude Include="raytracer\Intersection.h" />
     <ClInclude Include="raytracer\lights\GlobalLight.h" />

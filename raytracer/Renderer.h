@@ -36,7 +36,7 @@ namespace AGR {
 			float n1, float n2) const;
 		bool isRayLeavingObject(const glm::vec3& ray, const glm::vec3& normal) const;
 
-		std::vector<const Primitive *> m_renderables;
+		std::vector<const Primitive *> m_primitives;
 		std::vector<const Light *> m_lights;
 		unsigned long *m_image;
 		glm::uvec2 m_resolution;

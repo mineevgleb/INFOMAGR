@@ -16,15 +16,15 @@ namespace AGR {
 
 	void Renderer::addRenderable(Primitive& r)
 	{
-		r.m_idx = m_renderables.size();
-		m_renderables.push_back(&r);
+		r.m_idx = static_cast<int>(m_primitives.size());
+		m_primitives.push_back(&r);
 	}
 
 	void Renderer::removeRenderable(Primitive& r)
 	{
-		if (r.m_idx > -1 && r.m_idx < m_renderables.size()) {
-			m_renderables[r.m_idx] = *m_renderables.rbegin();
-			m_renderables.pop_back();
+		if (r.m_idx > -1 && r.m_idx < m_primitives.size()) {
+			m_primitives[r.m_idx] = *m_primitives.rbegin();
+			m_primitives.pop_back();
 			r.m_idx = -1;
 		}
 	}
@@ -45,7 +45,7 @@ namespace AGR {
 
 	void Renderer::addLight(Light& l)
 	{
-		l.m_idx = m_lights.size();
+		l.m_idx = static_cast<int>(m_lights.size());
 		m_lights.push_back(&l);
 	}
 
@@ -70,8 +70,8 @@ namespace AGR {
 			m_image = new unsigned long[m_resolution.x * m_resolution.y];
 			m_resolution = resolution;
 		}
-		for (int y = 0; y < m_resolution.y; ++y) {
-			for (int x = 0; x < resolution.x; ++x) {
+		for (size_t y = 0; y < m_resolution.y; ++y) {
+			for (size_t x = 0; x < resolution.x; ++x) {
 				Ray r;
 				glm::vec2 curPixel(static_cast<float>(x) / (m_resolution.x - 1),
 					static_cast<float>(y) / (m_resolution.y - 1));
@@ -110,6 +110,7 @@ namespace AGR {
 		color = m_backgroundColor;
 		Intersection closestHit;
 		bool isInObject = ray.surroundMaterial != nullptr;
+		glm::vec3 invDir = 1.0f / ray.direction;
 		if (getClosestIntersection(ray, closestHit)) {
 			glm::vec3 colorSelf;
 			gatherLight(closestHit, ray, colorSelf);
@@ -176,7 +177,7 @@ namespace AGR {
 		bool wasHit = false;
 		Intersection cur;
 		cur.ray = ray;
-		for (auto r : m_renderables) {
+		for (auto r : m_primitives) {
 			if (r->intersect(cur)) {
 				wasHit = true;
 				if (cur.ray_length > 0 && cur.ray_length < intersect.ray_length) {

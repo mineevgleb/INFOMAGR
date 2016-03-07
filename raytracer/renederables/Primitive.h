@@ -1,10 +1,9 @@
 #pragma once
 #include "../Material.h"
 #include "../Intersection.h"
-#include <vector>
+#include "../AABB.h"
 
 namespace AGR {
-
 	class Primitive {
 	friend class Renderer;
 	public:
@@ -13,13 +12,14 @@ namespace AGR {
 		virtual ~Primitive() {}
 		virtual bool intersect(Intersection &intersect) const = 0;
 		virtual void getTexCoordAndNormal(Intersection &intersect) const = 0;
-		const Material *getMaterial() const { return m_material; }
+		const AABB& getBoundingBox() const { return m_aabb; }
+		const Material* getMaterial() const { return m_material; }
 	protected:
 		Material *m_material;
+		AABB m_aabb;
 	private:
 		//index of an object in the Renderer's vector
 		int m_idx;
-		Renderer *m_renderer;
 	};
 
 }
