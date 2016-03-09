@@ -4,6 +4,7 @@
 #include "renederables/Mesh.h"
 #include "lights/Light.h"
 #include "Camera.h"
+#include "BVH.h"
 
 namespace AGR {
 
@@ -36,12 +37,13 @@ namespace AGR {
 			float n1, float n2) const;
 		bool isRayLeavingObject(const glm::vec3& ray, const glm::vec3& normal) const;
 
-		std::vector<const Primitive *> m_primitives;
+		std::vector<Primitive *> m_primitives;
 		std::vector<const Light *> m_lights;
 		unsigned long *m_image;
 		glm::uvec2 m_resolution;
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
+		BVH m_bvh;
 
 		const int maxRecursionDepth = 30;
 		const float shiftValue = FLT_EPSILON * 500;

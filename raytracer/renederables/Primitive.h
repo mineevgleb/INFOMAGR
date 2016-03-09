@@ -6,6 +6,7 @@
 namespace AGR {
 	class Primitive {
 	friend class Renderer;
+	friend class BVH;
 	public:
 		explicit Primitive(Material &m) :
 			m_material(&m), m_idx(-1) {}
@@ -20,6 +21,8 @@ namespace AGR {
 	private:
 		//index of an object in the Renderer's vector
 		int m_idx;
+		//used for BVH constructions
+		::uint64_t m_mortonCode;
 	};
 
 }

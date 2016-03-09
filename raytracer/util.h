@@ -10,4 +10,6 @@ namespace AGR {
 		const glm::vec3& scale, glm::mat4x4& out);
 
 	void lookAtToAngles(const glm::vec3& direction, glm::vec3& angles);
+
+	int lzcnt(::uint64_t num);
 }

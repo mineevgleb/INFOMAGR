@@ -53,7 +53,9 @@ void Game::Init()
 		AGR::Vertex(glm::vec3(-10, 0, 50), glm::vec2(1, 0)), 
 		*m[0], true, false, false));
 	AGR::Mesh* mesh = new AGR::Mesh(*m[1]);
-	mesh->load("teapot.obj");
+	mesh->load("tea-highp.obj");
+	mesh->setRotation(glm::vec3(0, 30, 0));
+	mesh->commitTransformations();
 	//mesh->setRotation(glm::vec3(0, 45, 0));
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
@@ -63,7 +65,7 @@ void Game::Init()
 	//m_scene->addRenderable(*r[2]);
 	m_scene->addRenderable(*r[3]);
 	//m_scene->addRenderable(*r[4]);
-	m_scene->addRenderable(*r[5]);
+	//m_scene->addRenderable(*r[5]);
 	m_scene->addRenderable(*mesh);
 	m_scene->addLight(*l[0]);
 	m_scene->addLight(*l[1]);

@@ -143,6 +143,7 @@ namespace AGR
 				v.normal = glm::normalize(glm::vec3(newVec));
 				t->setVertex(i, v);
 			}
+			t->commitTransformations();
 		}
 	}
 }

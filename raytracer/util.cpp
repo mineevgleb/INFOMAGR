@@ -20,4 +20,17 @@ namespace AGR {
 		angles.x = glm::atan(direction.z, direction.x);
 		angles.y = glm::acos(direction.y / direction.length());
 	}
+
+	int lzcnt(::uint64_t num)
+	{
+		int guess = 0;
+		int step = 64;
+		do {
+			step = (step + 1) >> 1;
+			int newGuess = guess + step;
+			if (newGuess > 0 && (UINT64_C(1) << newGuess - 1) <= num)
+				guess = newGuess;
+		} while (step > 1);
+		return 64 - guess;
+	}
 }

@@ -65,6 +65,7 @@ namespace AGR {
 
 	void Renderer::render(const glm::uvec2 & resolution)
 	{
+		m_bvh.construct(m_primitives);
 		if (resolution != m_resolution) {
 			delete[] m_image;
 			m_image = new unsigned long[m_resolution.x * m_resolution.y];
@@ -111,7 +112,8 @@ namespace AGR {
 		Intersection closestHit;
 		bool isInObject = ray.surroundMaterial != nullptr;
 		glm::vec3 invDir = 1.0f / ray.direction;
-		if (getClosestIntersection(ray, closestHit)) {
+		if (m_bvh.Traverse(ray, closestHit)) {
+		//if (getClosestIntersection(ray, closestHit)) {
 			glm::vec3 colorSelf;
 			gatherLight(closestHit, ray, colorSelf);
 
@@ -177,8 +179,9 @@ namespace AGR {
 		bool wasHit = false;
 		Intersection cur;
 		cur.ray = ray;
+		glm::vec3 inverse = 1.0f / ray.direction;
 		for (auto r : m_primitives) {
-			if (r->intersect(cur)) {
+			if (r->getBoundingBox().testIntersection(ray, inverse) && r->intersect(cur)) {
 				wasHit = true;
 				if (cur.ray_length > 0 && cur.ray_length < intersect.ray_length) {
 					intersect = cur;
@@ -213,7 +216,7 @@ namespace AGR {
 				rayToLight.origin = shiftedPt;
 				rayToLight.direction = distToLight.direction;
 				Intersection intersect;
-				bool isIntersect = getClosestIntersection(rayToLight, intersect);
+				bool isIntersect = m_bvh.Traverse(rayToLight, intersect);
 				if (!isIntersect || intersect.ray_length > distToLight.length) {
 					float diffuseScaler =
 						glm::clamp(glm::dot(hit.normal, rayToLight.direction), 0.0f, 1.0f);

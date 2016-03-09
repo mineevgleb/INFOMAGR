@@ -19,9 +19,24 @@ namespace AGR
 	{
 		glm::vec3 t1 = (m_minPt - r.origin) * invDir;
 		glm::vec3 t2 = (m_maxPt - r.origin) * invDir;
-	
-		float tmin = fmax(fmax(fmin(t1.x, t2.x), fmin(t1.y, t2.y)), fmin(t1.z, t2.z));
-		float tmax = fmin(fmin(fmax(t1.x, t2.x), fmax(t1.y, t2.y)), fmax(t1.z, t2.z));
+
+		bool cmp = t1.x < t2.x;
+		float xmin = t2.x + (t1.x - t2.x) * cmp;
+		float xmax = t1.x + t2.x - xmin;
+		cmp = t1.y < t2.y;
+		float ymin = t2.y + (t1.y - t2.y) * cmp;
+		float ymax = t1.y + t2.y - ymin;
+		cmp = t1.z < t2.z;
+		float zmin = t2.z + (t1.z - t2.z) * cmp;
+		float zmax = t1.z + t2.z - zmin;
+		cmp = xmin > ymin;
+		float tmin = ymin + (xmin - ymin) * cmp;
+		cmp = zmin > tmin;
+		tmin += cmp * (zmin - tmin);
+		cmp = xmax < ymax;
+		float tmax = ymax + (xmax - ymax) * cmp;
+		cmp = zmax < tmax;
+		tmax += cmp * (zmax - tmax);
 
 		return (tmax > 0 && tmax > tmin);
 	}
@@ -53,6 +68,6 @@ namespace AGR
 
 	const glm::vec3& AABB::getMaxPt() const
 	{
-		return m_minPt;
+		return m_maxPt;
 	}
 }
