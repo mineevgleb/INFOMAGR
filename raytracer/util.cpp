@@ -21,7 +21,7 @@ namespace AGR {
 		angles.y = glm::acos(direction.y / direction.length());
 	}
 
-	int lzcnt(::uint64_t num)
+	int lzcnt64(::uint64_t num)
 	{
 		int guess = 0;
 		int step = 64;
@@ -31,6 +31,26 @@ namespace AGR {
 			if (newGuess > 0 && (UINT64_C(1) << newGuess - 1) <= num)
 				guess = newGuess;
 		} while (step > 1);
-		return 64 - guess;
+		return sizeof(num) * 8 - guess;
+	}
+
+	int lzcnt32(::uint32_t num)
+	{
+		int guess = 0;
+		int step = 64;
+		do {
+			step = (step + 1) >> 1;
+			int newGuess = guess + step;
+			if (newGuess > 0 && (UINT32_C(1) << newGuess - 1) <= num)
+				guess = newGuess;
+		} while (step > 1);
+		return sizeof(num) * 8 - guess;
+	}
+
+	int setbitcnt(unsigned int i)
+	{
+		i = i - ((i >> 1) & 0x55555555);
+		i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+		return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 	}
 }

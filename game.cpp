@@ -52,7 +52,7 @@ void Game::Init()
 		AGR::Vertex(glm::vec3(10, 0, 50), glm::vec2(0, 1)),
 		AGR::Vertex(glm::vec3(-10, 0, 50), glm::vec2(1, 0)), 
 		*m[0], true, false, false));
-	AGR::Mesh* mesh = new AGR::Mesh(*m[1]);
+	AGR::Mesh* mesh = new AGR::Mesh(*m[2]);
 	mesh->load("tea-highp.obj");
 	mesh->setRotation(glm::vec3(0, 30, 0));
 	mesh->commitTransformations();
@@ -92,7 +92,7 @@ void Game::Tick( float _DT )
 	DWORD before = GetTickCount();
 	//static int i = 0;
 	//if (!i++) 
-		m_scene->render();
+	m_scene->render();
 	DWORD after = GetTickCount();
 	memcpy(screen->GetBuffer(), m_scene->getImage(),
 		m_scene->getResolution().x * m_scene->getResolution().y * sizeof(Pixel));

@@ -7,10 +7,28 @@ namespace AGR {
 		m_backgroundColor(backgroundColor)
 	{
 		m_image = new unsigned long[m_resolution.x * m_resolution.y];
+
+		std::vector<cl::Platform> platforms;
+		cl::Platform::get(&platforms);
+		if (platforms.size() == 0) {
+			throw std::runtime_error("No OpenCL platforms found");
+		}
+
+		cl::Platform platformToUse = platforms[0];
+		std::vector<cl::Device> devices;
+		platformToUse.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+		if (devices.size() == 0) {
+			throw std::runtime_error("No OpenCL GPU devices found for default platform");
+		}
+		m_deviceToUse = devices[0];
+		m_context = new cl::Context({ m_deviceToUse });
+		m_bvh = new BVH(m_context, &m_deviceToUse);
 	}
 
 	Renderer::~Renderer()
 	{
+		delete m_bvh;
+		delete m_context;
 		delete[] m_image;
 	}
 
@@ -65,12 +83,35 @@ namespace AGR {
 
 	void Renderer::render(const glm::uvec2 & resolution)
 	{
-		m_bvh.construct(m_primitives);
+		m_bvh->construct(m_primitives);
 		if (resolution != m_resolution) {
 			delete[] m_image;
 			m_image = new unsigned long[m_resolution.x * m_resolution.y];
 			m_resolution = resolution;
 		}
+		/*std::vector<Ray> rays (resolution.x * resolution.y);
+		std::vector<Intersection> its(resolution.x * resolution.y);
+		for (size_t y = 0; y < m_resolution.y; ++y) {
+			for (size_t x = 0; x < resolution.x; ++x) {
+				glm::vec2 curPixel(static_cast<float>(x) / (m_resolution.x - 1),
+					static_cast<float>(y) / (m_resolution.y - 1));
+				m_camera->produceRay(curPixel, rays[x + y * resolution.x]);
+			}
+		}
+		m_bvh->PacketTraverse(rays, its);
+		float mi = 10000.0f;
+		float mx = 0.0f;
+		for (int i = 0; i < resolution.x * resolution.y; ++i) {
+			if (its[i].ray_length < 0) its[i].ray_length = 100;
+			mi = glm::min(its[i].ray_length, mi);
+			mx = glm::max(its[i].ray_length, mx);
+		}
+		for (int i = 0; i < resolution.x * resolution.y; ++i) {
+			glm::vec3 c(its[i].ray_length);
+			c = (1.0f - (c - mi) / 4.0f) * 255.0f;
+			if (c.x < 0) c = glm::vec3(0);
+			m_image[i] = (unsigned(c.b)) + (unsigned(c.g) << 8) + (unsigned(c.r) << 16);
+		}*/
 		for (size_t y = 0; y < m_resolution.y; ++y) {
 			for (size_t x = 0; x < resolution.x; ++x) {
 				Ray r;
@@ -112,7 +153,7 @@ namespace AGR {
 		Intersection closestHit;
 		bool isInObject = ray.surroundMaterial != nullptr;
 		glm::vec3 invDir = 1.0f / ray.direction;
-		if (m_bvh.Traverse(ray, closestHit)) {
+		if (m_bvh->Traverse(ray, closestHit)) {
 		//if (getClosestIntersection(ray, closestHit)) {
 			glm::vec3 colorSelf;
 			gatherLight(closestHit, ray, colorSelf);
@@ -216,7 +257,7 @@ namespace AGR {
 				rayToLight.origin = shiftedPt;
 				rayToLight.direction = distToLight.direction;
 				Intersection intersect;
-				bool isIntersect = m_bvh.Traverse(rayToLight, intersect);
+				bool isIntersect = m_bvh->Traverse(rayToLight, intersect);
 				if (!isIntersect || intersect.ray_length > distToLight.length) {
 					float diffuseScaler =
 						glm::clamp(glm::dot(hit.normal, rayToLight.direction), 0.0f, 1.0f);

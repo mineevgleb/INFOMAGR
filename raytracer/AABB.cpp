@@ -3,7 +3,7 @@
 
 namespace AGR
 {
-	AABB::AABB(glm::vec3& minPt, glm::vec3& maxPt)
+	AABB::AABB(const glm::vec3& minPt, const glm::vec3& maxPt)
 		:m_minPt(minPt), m_maxPt(maxPt)
 	{}
 
@@ -69,5 +69,11 @@ namespace AGR
 	const glm::vec3& AABB::getMaxPt() const
 	{
 		return m_maxPt;
+	}
+
+	float AABB::calcArea() const
+	{
+		glm::vec3 dim = m_maxPt - m_minPt;
+		return (dim.x * (dim.y + dim.z) + dim.y * dim.z) * 2;
 	}
 }

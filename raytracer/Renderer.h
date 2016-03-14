@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <CL/cl.hpp>
 #include "renederables/Primitive.h"
 #include "renederables/Mesh.h"
 #include "lights/Light.h"
@@ -43,10 +44,13 @@ namespace AGR {
 		glm::uvec2 m_resolution;
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
-		BVH m_bvh;
+		BVH *m_bvh;
 
 		const int maxRecursionDepth = 30;
 		const float shiftValue = FLT_EPSILON * 500;
+
+		cl::Context *m_context;
+		cl::Device m_deviceToUse;
 	};
 
 }

@@ -11,5 +11,13 @@ namespace AGR {
 
 	void lookAtToAngles(const glm::vec3& direction, glm::vec3& angles);
 
-	int lzcnt(::uint64_t num);
+	int lzcnt64(::uint64_t num);
+	int lzcnt32(::uint32_t num);
+
+	int setbitcnt(unsigned int i);
+
+	constexpr int constpow(const int base, const int pow) {
+		return pow == 1 ? base : (base * constpow(base, pow - 1));
+	}
+
 }
