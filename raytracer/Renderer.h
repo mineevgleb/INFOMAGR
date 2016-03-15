@@ -21,32 +21,31 @@ namespace AGR {
 		void removeLight(Light &l);
 		void render();
 		void render(const glm::uvec2 &resolution);
-		void testRay(glm::vec2& px, glm::vec3 &col);
 		const glm::uvec2 & getResolution() const;
 		const unsigned long *getImage() const;
+		void testRay(int x, int y);
 	private:
-		float traceRay(const Ray& ray, float energy, int depth, glm::vec3& color);
-		bool getClosestIntersection(const Ray& ray, Intersection& intersect);
-		void gatherLight(const Intersection &hit, const Ray& ray, glm::vec3& color);
-		float traceRefraction(const Intersection &hit, const Ray& ray, glm::vec3& color,
-			float energy, int depth, bool isLeaving);
+		void traceRays(std::vector<Ray> &rays, bool test);
+		void processMissedRays(std::vector<Intersection> &intersections) const;
+		void gatherLight(std::vector<Intersection> &intersections);
+		void produceSecondaryRays(Intersection& hit, Ray& reflected, Ray& refracted);
 		bool calcRefractedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			float n1, float n2, glm::vec3& refracted) const;
 		void calcReflectedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			glm::vec3& reflected) const;
 		float calcReflectionComponent(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			float n1, float n2) const;
-		bool isRayLeavingObject(const glm::vec3& ray, const glm::vec3& normal) const;
 
 		std::vector<Primitive *> m_primitives;
 		std::vector<const Light *> m_lights;
 		unsigned long *m_image;
+		glm::vec3 *m_highpImage;
 		glm::uvec2 m_resolution;
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
 		BVH *m_bvh;
 
-		const int maxRecursionDepth = 30;
+		const int maxRecursionDepth = 10;
 		const float shiftValue = FLT_EPSILON * 500;
 
 		cl::Context *m_context;

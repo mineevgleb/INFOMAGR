@@ -16,6 +16,8 @@ namespace AGR {
 	public:
 		Mesh(Material& m) 
 			: m_material(&m),
+			m_translation(0),
+			m_rotation(0),
 			m_scale(1){}
 		~Mesh() { release(); }
 		bool load(const std::string& path, NormalType nt = CONSISTENT);

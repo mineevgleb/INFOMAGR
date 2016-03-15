@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "renederables/Sphere.h"
 
 namespace AGR {
 	Renderer::Renderer(const Camera& c, const glm::vec3& backgroundColor, 
@@ -7,6 +8,7 @@ namespace AGR {
 		m_backgroundColor(backgroundColor)
 	{
 		m_image = new unsigned long[m_resolution.x * m_resolution.y];
+		m_highpImage = new glm::vec3[m_resolution.x * m_resolution.y];
 
 		std::vector<cl::Platform> platforms;
 		cl::Platform::get(&platforms);
@@ -86,55 +88,34 @@ namespace AGR {
 		m_bvh->construct(m_primitives);
 		if (resolution != m_resolution) {
 			delete[] m_image;
+			delete[] m_highpImage;
 			m_image = new unsigned long[m_resolution.x * m_resolution.y];
+			m_highpImage = new glm::vec3[m_resolution.x * m_resolution.y];
 			m_resolution = resolution;
 		}
-		/*std::vector<Ray> rays (resolution.x * resolution.y);
-		std::vector<Intersection> its(resolution.x * resolution.y);
+		static std::vector<Ray> raysToIntersect;
+		raysToIntersect.resize(m_resolution.x * m_resolution.y);
 		for (size_t y = 0; y < m_resolution.y; ++y) {
 			for (size_t x = 0; x < resolution.x; ++x) {
 				glm::vec2 curPixel(static_cast<float>(x) / (m_resolution.x - 1),
 					static_cast<float>(y) / (m_resolution.y - 1));
-				m_camera->produceRay(curPixel, rays[x + y * resolution.x]);
+				m_camera->produceRay(curPixel, raysToIntersect[x + y * m_resolution.x]);
+				raysToIntersect[x + y * m_resolution.x].pixel = &m_highpImage[x + y * m_resolution.x];
+				raysToIntersect[x + y * m_resolution.x].surroundMaterial = nullptr;
+				raysToIntersect[x + y * m_resolution.x].energy = glm::vec3(1.0f);
+				m_highpImage[x + y * m_resolution.x] = glm::vec3(0.0f);
 			}
 		}
-		m_bvh->PacketTraverse(rays, its);
-		float mi = 10000.0f;
-		float mx = 0.0f;
-		for (int i = 0; i < resolution.x * resolution.y; ++i) {
-			if (its[i].ray_length < 0) its[i].ray_length = 100;
-			mi = glm::min(its[i].ray_length, mi);
-			mx = glm::max(its[i].ray_length, mx);
-		}
-		for (int i = 0; i < resolution.x * resolution.y; ++i) {
-			glm::vec3 c(its[i].ray_length);
-			c = (1.0f - (c - mi) / 4.0f) * 255.0f;
-			if (c.x < 0) c = glm::vec3(0);
-			m_image[i] = (unsigned(c.b)) + (unsigned(c.g) << 8) + (unsigned(c.r) << 16);
-		}*/
+		traceRays(raysToIntersect, false);
 		for (size_t y = 0; y < m_resolution.y; ++y) {
 			for (size_t x = 0; x < resolution.x; ++x) {
-				Ray r;
-				glm::vec2 curPixel(static_cast<float>(x) / (m_resolution.x - 1),
-					static_cast<float>(y) / (m_resolution.y - 1));
-				m_camera->produceRay(curPixel, r);
-				glm::vec3 c;
-				traceRay(r, 1.0, 1, c);
-				c *= 255; 
-				m_image[x + y * resolution.x] = 
+				glm::vec3& c = m_highpImage[x + y * resolution.x];
+				c = glm::clamp(c, 0.0f, 1.0f);
+				c *= 255;
+				m_image[x + y * resolution.x] =
 					(unsigned(c.b)) + (unsigned(c.g) << 8) + (unsigned(c.r) << 16);
 			}
 		}
-	}
-
-	void Renderer::testRay(glm::vec2 &px, glm::vec3 &col)
-	{
-		glm::vec2 a(px.x / (m_resolution.x - 1), px.y / (m_resolution.y - 1));
-		Ray r;
-		m_camera->produceRay(a, r);
-		glm::vec3 c;
-		traceRay(r, 1.0, 1, c);
-		col = c;
 	}
 
 	const glm::uvec2 & Renderer::getResolution() const
@@ -147,170 +128,193 @@ namespace AGR {
 		return m_image;
 	}
 
-	float Renderer::traceRay(const Ray& ray, float energy, int depth, glm::vec3& color)
+	void Renderer::testRay(int x, int y)
 	{
-		color = m_backgroundColor;
-		Intersection closestHit;
-		bool isInObject = ray.surroundMaterial != nullptr;
-		glm::vec3 invDir = 1.0f / ray.direction;
-		if (m_bvh->Traverse(ray, closestHit)) {
-		//if (getClosestIntersection(ray, closestHit)) {
-			glm::vec3 colorSelf;
-			gatherLight(closestHit, ray, colorSelf);
-
-			const Material* m = closestHit.p_object->getMaterial();
-			glm::vec3 colorRefracted;
-			float totalReflection = 0.0f;
-			float totalRefraction = 0.0f;
-			if (m->refractionIntensity > FLT_EPSILON) {
-				if (energy > 1.0 / 255 && depth <= maxRecursionDepth) {
-					totalRefraction = traceRefraction(closestHit, ray, colorRefracted,
-						energy, depth, isInObject);
-					if (!isInObject) {
-						totalRefraction *= m->refractionIntensity;
-						totalReflection = (1 - totalRefraction) * m->refractionIntensity;
-					}
-					else {
-						totalReflection = (1 - totalRefraction);
-					}
-				} else {
-					colorRefracted = m->innerColor;
-				}
-			}
-			glm::vec3 colorReflected;
-			totalReflection += m->reflectionIntensity;
-			totalReflection = glm::clamp(totalReflection, 0.0f, 1.0f);
-			if (totalReflection > FLT_EPSILON) {
-				if (energy > 1.0 / 255 && depth <= maxRecursionDepth) {
-					Ray reflectedRay;
-					reflectedRay.origin = closestHit.hitPt + closestHit.normal * shiftValue;
-					reflectedRay.surroundMaterial = ray.surroundMaterial;
-					calcReflectedRay(ray.direction, closestHit.normal, reflectedRay.direction);
-					traceRay(reflectedRay, energy * totalReflection, depth + 1, colorReflected);
-					colorReflected *= m->reflectionColor;
-				} else {
-					colorReflected = m->reflectionColor;
-				}
-			}
-			color = colorSelf + 
-				colorReflected * totalReflection +
-				colorRefracted * totalRefraction;
-			color.r = glm::clamp(color.r, 0.0f, 1.0f);
-			color.g = glm::clamp(color.g, 0.0f, 1.0f);
-			color.b = glm::clamp(color.b, 0.0f, 1.0f);
-			if (isInObject) {
-				float remainedIntensity = glm::exp(-glm::log(m->absorption) * closestHit.ray_length);
-				color *= remainedIntensity;
-				color += ray.surroundMaterial->innerColor * (1 - remainedIntensity);
-			}
-			return closestHit.ray_length;
-		}
-		if (isInObject) {
-			color = ray.surroundMaterial->innerColor;
-		}
-		else {
-			color = m_backgroundColor;
-		}
-		return -1;
+		std::vector<Ray> r(1);
+		glm::vec2 curPixel(static_cast<float>(x) / (m_resolution.x - 1),
+			static_cast<float>(y) / (m_resolution.y - 1));
+		m_camera->produceRay(curPixel, r[0]);
+		r[0].pixel = &m_highpImage[x + y * m_resolution.x];
+		r[0].surroundMaterial = nullptr;
+		r[0].energy = glm::vec3(1.0f);
+		traceRays(r, true);
 	}
 
-	bool Renderer::getClosestIntersection(const Ray& ray, Intersection& intersect)
+	void Renderer::traceRays(std::vector<Ray>& rays, bool test)
 	{
-		intersect.ray_length = FLT_MAX;
-		bool wasHit = false;
-		Intersection cur;
-		cur.ray = ray;
-		glm::vec3 inverse = 1.0f / ray.direction;
-		for (auto r : m_primitives) {
-			if (r->getBoundingBox().testIntersection(ray, inverse) && r->intersect(cur)) {
-				wasHit = true;
-				if (cur.ray_length > 0 && cur.ray_length < intersect.ray_length) {
-					intersect = cur;
+		static std::vector<Intersection> intersections;
+		intersections.resize(rays.size());
+		for (int i = 0; i < maxRecursionDepth && rays.size() > 0; ++i) {
+			m_bvh->PacketTraverse(rays, intersections);
+			processMissedRays(intersections);
+			for (int j = 0; j < intersections.size(); ++j) {
+				intersections[j].p_object->getTexCoordAndNormal(intersections[j]);
+				if (test && i > 0) {
+					for (int k = 0; k <= 30; ++k) {
+						Material* m = new Material();
+						m->reflectionIntensity = 1;
+						m->reflectionColor = glm::vec3(0);
+						float itp = ((float)k) / 30;
+						glm::vec3 pt = intersections[j].ray.origin * (1 - itp) + intersections[j].hitPt * itp; 
+						float r = k == 0 ? 0.05f: 0.01f;
+						Sphere *s = new Sphere(*m, pt, r);
+						addRenderable(*s);
+					}
+				}
+				Ray& r = intersections[j].ray;
+				if (r.surroundMaterial) {
+					const Material *m = r.surroundMaterial;
+					float remainedIntensity = glm::exp(-glm::log(m->absorption) * intersections[j].ray_length);
+					*r.pixel += r.energy * (1.0f - remainedIntensity) * m->innerColor;
+					r.energy *= remainedIntensity;
+				}
+			}
+			gatherLight(intersections);
+			rays.resize(0);
+			for (int j = 0; j < intersections.size(); ++j) {
+				Ray refl, refr;
+				produceSecondaryRays(intersections[j], refl, refr);
+				if (refr.pixel) {
+					rays.push_back(refr);
+				}
+				if (refl.pixel) {
+					rays.push_back(refl);
 				}
 			}
 		}
-		if (wasHit)
-		{
-			intersect.p_object->getTexCoordAndNormal(intersect);
-		}
-		return wasHit;
 	}
 
-	void Renderer::gatherLight(const Intersection &hit, const Ray& ray, glm::vec3& color)
+	void Renderer::processMissedRays(std::vector<Intersection>& intersections) const
 	{
-		color = glm::vec3();
-		const Material* m = hit.p_object->getMaterial();
-		glm::vec3 colorInPt;
-		if (m->texture && (m->ambientIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON)) {
-			m->texture->getColor(hit.texCoord, colorInPt);
-		}
-		color += colorInPt * m->ambientIntensity;
-		if (m->specularIntensity > 0 || glm::length(colorInPt) > 0) {
-			glm::vec3 shiftedPt = hit.hitPt + hit.normal * shiftValue;
-			for (auto l : m_lights) {
-				glm::vec3 lightCol;
-				l->getIntensityAtThePoint(shiftedPt, lightCol);
-				if (glm::length(lightCol) < FLT_EPSILON) continue;
-				LightRay distToLight;
-				l->getDirectionToTheLight(shiftedPt, distToLight);
-				Ray rayToLight;
-				rayToLight.origin = shiftedPt;
-				rayToLight.direction = distToLight.direction;
-				Intersection intersect;
-				bool isIntersect = m_bvh->Traverse(rayToLight, intersect);
-				if (!isIntersect || intersect.ray_length > distToLight.length) {
-					float diffuseScaler =
-						glm::clamp(glm::dot(hit.normal, rayToLight.direction), 0.0f, 1.0f);
-					color += colorInPt * lightCol * diffuseScaler * m->diffuseIntensity;
+		int amount = intersections.size();
+		int i = 0;
+		while (i < amount) {
+			if (intersections[i].ray_length < 0) {
+				Ray &r = intersections[i].ray;
+				if (r.surroundMaterial) {
+					*r.pixel += r.energy * r.surroundMaterial->innerColor;
+				} else {
+					*r.pixel += r.energy * m_backgroundColor;
 				}
+				intersections[i] = intersections[--amount];
+			} else {
+				++i;
+			}
+		}
+		intersections.resize(amount);
+	}
+
+	void Renderer::gatherLight(std::vector<Intersection>& intersections)
+	{
+		static std::vector<glm::vec3> surfaceColors;
+		static std::vector<Ray> raysToLights;
+		static std::vector<int> hitPtForRays;
+		static std::vector<float> lengthsFromLights;
+		static std::vector<bool> occlusionFlags;
+		size_t raysAm = 0;
+		surfaceColors.resize(intersections.size());
+		raysToLights.resize(intersections.size() * m_lights.size());
+		lengthsFromLights.resize(intersections.size() * m_lights.size());
+		hitPtForRays.resize(intersections.size() * m_lights.size());
+
+		for (int i = 0; i < intersections.size(); ++i) {
+			Ray &r = intersections[i].ray;
+			const Material *m = intersections[i].p_object->getMaterial();
+			if (m->texture) {
+				m->texture->getColor(intersections[i].texCoord, surfaceColors[i]);
+				*r.pixel += r.energy * m->ambientIntensity * surfaceColors[i];
+			} else {
+				continue;
+			}
+
+			if (m->specularIntensity > FLT_EPSILON || m->diffuseIntensity > FLT_EPSILON) {
+				for (int j = 0; j < m_lights.size(); ++j) {
+					glm::vec3 lightAtPt;
+					m_lights[j]->getIntensityAtThePoint(intersections[i].hitPt, lightAtPt);
+					if (lightAtPt.x > 1.0f / 255.0f || lightAtPt.y > 1.0f / 255.0f 
+						|| lightAtPt.z > 1.0f / 255.0f) {
+						LightRay lr;
+						m_lights[j]->getDirectionToTheLight(intersections[i].hitPt, lr);
+						raysToLights[raysAm].direction = lr.direction;
+						raysToLights[raysAm].origin =
+							intersections[i].hitPt + intersections[i].normal * shiftValue;
+						raysToLights[raysAm].energy = lightAtPt;
+						hitPtForRays[raysAm] = i;
+						lengthsFromLights[raysAm++] = lr.length;
+					}
+				}
+			}
+
+		}
+		raysToLights.resize(raysAm);
+		lengthsFromLights.resize(raysAm);
+		occlusionFlags.resize(raysAm);
+		m_bvh->PacketCheckOcclusions(raysToLights, lengthsFromLights, occlusionFlags);
+
+		for (int i = 0; i < raysAm; ++i) {
+			if (!occlusionFlags[i]) {
+				Intersection& hit = intersections[hitPtForRays[i]];
+				const Material *m = hit.p_object->getMaterial();
+				float diffuseScaler =
+					glm::clamp(glm::dot(hit.normal, raysToLights[i].direction), 0.0f, 1.0f);
+				*hit.ray.pixel +=
+					hit.ray.energy * diffuseScaler * m->diffuseIntensity *
+					raysToLights[i].energy * surfaceColors[hitPtForRays[i]];
 				if (m->specularIntensity > FLT_EPSILON) {
 					glm::vec3 reflected =
-						2 * glm::dot(hit.normal, rayToLight.direction) * hit.normal 
-						- rayToLight.direction;
-					float specularScaler = 
-						glm::clamp(glm::dot(reflected, -ray.direction), 0.0f, 1.0f);
-					color += lightCol *
-						glm::pow(specularScaler, m->shininess) *
-						m->specularIntensity;
+						2 * glm::dot(hit.normal, raysToLights[i].direction) * hit.normal
+						- raysToLights[i].direction;
+					float specularScaler =
+						glm::clamp(glm::dot(reflected, -hit.ray.direction), 0.0f, 1.0f);
+					*hit.ray.pixel += hit.ray.energy *  raysToLights[i].energy *
+						glm::pow(specularScaler, m->shininess) * m->specularIntensity;
 				}
 			}
-		}	
+		}
 	}
 
-	//returns actual refraction component value (0 in case of TIR)
-	float Renderer::traceRefraction(const Intersection& hit, const Ray& ray, glm::vec3& color, 
-		float energy, int depth, bool isLeaving)
+	void Renderer::produceSecondaryRays(Intersection& hit, Ray& reflected, Ray& refracted)
 	{
-		if (energy < 1.0 / 255 || depth > maxRecursionDepth) {
-			color = glm::vec3();
-			return 1;
-		}
-		Ray refractedRay;
 		const Material* m = hit.p_object->getMaterial();
-		float refrCoef1 = 1.0f, refrCoef2 = 1.0f;
-		if (isLeaving) {
-			refractedRay.surroundMaterial = nullptr;
-			refrCoef1 = m->refractionCoeficient;
-		} else {
-			refrCoef2 = m->refractionCoeficient;
-			refractedRay.surroundMaterial = m;
+		Ray& r = hit.ray;
+		glm::vec3 refrEnergy = m->refractionIntensity * r.energy;
+		glm::vec3 reflEnergy = m->reflectionIntensity * r.energy;
+		float frenselRefl = 0.0f;
+		if(refrEnergy.x > 1.0f / 255.0f || refrEnergy.y > 1.0f / 255.0f 
+			|| refrEnergy.z > 1.0f / 255.0f) {
+			refracted.surroundMaterial = r.surroundMaterial ? nullptr : m;
+			float refrCoef1 = r.surroundMaterial ? m->refractionCoeficient : 1.0f;
+			float refrCoef2 = r.surroundMaterial ? 1.0f : m->refractionCoeficient;
+			if (calcRefractedRay(r.direction, hit.normal, refrCoef1, refrCoef2, refracted.direction)) {
+				refracted.origin = hit.hitPt - hit.normal * shiftValue;
+				if (r.surroundMaterial) {
+					frenselRefl = calcReflectionComponent(refracted.direction,
+						hit.normal, refrCoef1, refrCoef2);
+				}
+				else {
+					frenselRefl = calcReflectionComponent(r.direction,
+						hit.normal, refrCoef1, refrCoef2);
+				}
+				glm::vec3 pureRefrEnergy = refrEnergy * (1.0f - frenselRefl);
+				if (pureRefrEnergy.x > 1.0f / 255.0f || pureRefrEnergy.y > 1.0f / 255.0f
+					|| pureRefrEnergy.z > 1.0f / 255.0f) {
+					refracted.pixel = r.pixel;
+					refracted.energy = pureRefrEnergy;
+				}
+			} else {
+				frenselRefl = 1.0f;
+			}
 		}
-		refractedRay.origin = hit.hitPt - hit.normal * shiftValue;
-		float refractionComp;
-		if (!calcRefractedRay(ray.direction, hit.normal, refrCoef1, 
-			refrCoef2, refractedRay.direction)) {
-			color = glm::vec3();
-			return 0;
-		} 
-		if (isLeaving) {
-			refractionComp = 1 - calcReflectionComponent(refractedRay.direction,
-				hit.normal, refrCoef1, refrCoef2);
-		} else {
-			refractionComp = 1 - calcReflectionComponent(ray.direction,
-				hit.normal, refrCoef1, refrCoef2);
+		reflEnergy += refrEnergy * frenselRefl;
+		reflEnergy *= m->reflectionColor;
+		if (reflEnergy.x > 1.0f / 255.0f || reflEnergy.y > 1.0f / 255.0f
+			|| reflEnergy.z > 1.0f / 255.0f) {
+			reflected.origin = hit.hitPt + hit.normal * shiftValue;
+			reflected.surroundMaterial = r.surroundMaterial;
+			calcReflectedRay(r.direction, hit.normal, reflected.direction);
+			reflected.energy = reflEnergy;
+			//reflected.pixel = r.pixel;
 		}
-		traceRay(refractedRay, energy * refractionComp, depth + 1, color);
-		return refractionComp;
 	}
 
 	bool Renderer::calcRefractedRay(const glm::vec3& incomingRay, const glm::vec3& normal, 
@@ -342,10 +346,5 @@ namespace AGR {
 		r0 *= r0;
 		float angleCos = glm::abs(glm::dot(-incomingRay, normal));
 		return r0 + (1 - r0) * glm::pow(1 - angleCos, 5.0f);
-	}
-
-	bool Renderer::isRayLeavingObject(const glm::vec3& ray, const glm::vec3& normal) const 
-	{
-		return (glm::dot(ray, normal) > 0);
 	}
 }

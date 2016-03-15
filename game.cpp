@@ -10,6 +10,7 @@
 // -----------------------------------------------------------
 // Initialize the application
 // -----------------------------------------------------------
+AGR::Mesh *mesh;
 void Game::Init()
 {
 	float aspectRatio = static_cast<float>(screen->GetWidth()) / screen->GetHeight();
@@ -29,7 +30,7 @@ void Game::Init()
 	m[1]->reflectionColor = glm::vec3(1, 1, 1);
 	m[1]->innerColor = glm::vec3(0, 0, 0.5);
 	m[1]->reflectionIntensity = 0.0f;
-	m[1]->absorption = 1.01f;
+	m[1]->absorption = 1.02f;
 	m.push_back(new AGR::Material);
 	m[2]->texture = s[2];
 	m[2]->ambientIntensity = 0.2;
@@ -42,7 +43,7 @@ void Game::Init()
 	//m[3]->ambientIntensity = 0.1;
 	//m[3]->diffuseIntensity = 0.2;
 	m[3]->reflectionColor = glm::vec3(1, 1, 1);
-	r.push_back(new AGR::Sphere(*m[1], glm::vec3(1, 1, 0), 0.1f));
+	r.push_back(new AGR::Sphere(*m[1], glm::vec3(0, 1, 1), 1.0f));
 	r.push_back(new AGR::Sphere(*m[0], glm::vec3(2, 0, 10), 0.5f));
 	r.push_back(new AGR::Sphere(*m[2], glm::vec3(0, -0.5, 11.3), 2));
 	r.push_back(new AGR::Sphere(*m[0], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3()));
@@ -52,11 +53,12 @@ void Game::Init()
 		AGR::Vertex(glm::vec3(10, 0, 50), glm::vec2(0, 1)),
 		AGR::Vertex(glm::vec3(-10, 0, 50), glm::vec2(1, 0)), 
 		*m[0], true, false, false));
-	AGR::Mesh* mesh = new AGR::Mesh(*m[2]);
-	mesh->load("tea-highp.obj");
-	mesh->setRotation(glm::vec3(0, 30, 0));
+	mesh = new AGR::Mesh(*m[1]);
+	mesh->load("tea-u.obj", AGR::FLAT);
+	mesh->setRotation(glm::vec3(0, 90, 0));
+	//mesh->setScale(glm::vec3(1.0f));
+	//mesh->setPosition(glm::vec3(0, 1, 1));
 	mesh->commitTransformations();
-	//mesh->setRotation(glm::vec3(0, 45, 0));
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Renderer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
@@ -99,7 +101,9 @@ void Game::Tick( float _DT )
 	screen->Print(std::to_string(after - before).c_str(), 10, 10, 0xFF0000);
 	glm::vec3 rot = ((AGR::Sphere *)r[2])->getRotation();
 	rot.y += 5;
-	((AGR::Sphere *)r[2])->setRotation(rot);
+	//((AGR::Sphere *)r[2])->setRotation(rot);
+	//mesh->setRotation(rot);
+	//mesh->commitTransformations();
 }
 
 void Game::MouseDown(int _Button)
@@ -109,7 +113,9 @@ void Game::MouseDown(int _Button)
 	SDL_GetMouseState(&x, &y);
 	m_mousePos.x = x;
 	m_mousePos.y = y;
-	m_scene->testRay(m_mousePos, col);
+	m_scene->testRay(x, y);
+	mesh->setPosition(glm::vec3(0, 10, 0));
+	mesh->commitTransformations();
 }
 
 void Game::MouseMove(int _X, int _Y)

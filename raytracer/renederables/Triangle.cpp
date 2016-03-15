@@ -132,14 +132,11 @@ namespace AGR
 		m_d01 = glm::dot(m_v0v1, m_v0v2);
 		m_d11 = glm::dot(m_v0v2, m_v0v2);
 		m_invdenom = 1.0f / (m_d00 * m_d11 - m_d01 * m_d01);
-		glm::vec3 minPt;
-		minPt.x = fmin(fmin(m_vert[0].position.x, m_vert[1].position.x), m_vert[2].position.x);
-		minPt.y = fmin(fmin(m_vert[0].position.y, m_vert[1].position.y), m_vert[2].position.y);
-		minPt.z = fmin(fmin(m_vert[0].position.z, m_vert[1].position.z), m_vert[2].position.z);
-		glm::vec3 maxPt;
-		maxPt.x = fmax(fmax(m_vert[0].position.x, m_vert[1].position.x), m_vert[2].position.x);
-		maxPt.y = fmax(fmax(m_vert[0].position.y, m_vert[1].position.y), m_vert[2].position.y);
-		maxPt.z = fmax(fmax(m_vert[0].position.z, m_vert[1].position.z), m_vert[2].position.z);
+		glm::vec3 minPt = glm::min(glm::min(m_vert[0].position, m_vert[1].position), m_vert[2].position);
+		glm::vec3 maxPt = glm::max(glm::max(m_vert[0].position, m_vert[1].position), m_vert[2].position);;
+		glm::vec3 dim = maxPt - minPt;
+		minPt -= glm::vec3(0.01f);
+		maxPt += glm::vec3(0.01f);
 		m_aabb = AABB(minPt, maxPt);
 	}
 }

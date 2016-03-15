@@ -137,17 +137,18 @@ namespace AGR
 			m_hitsBuf[i].hitsFound = 0;
 			m_hitsBuf[i].lastNode = 0;
 			intersect[i].ray_length = -1;
+			intersect[i].ray = rays[i];
 		}
 		m_cmdqueue->enqueueWriteBuffer(*m_raysBufCL, CL_TRUE, 0,
 			rays.size() * sizeof(m_raysBuf[0]), &m_raysBuf[0]);
-		size_t amountUndone = m_raysBuf.size();
+		size_t amountUndone = rays.size();
 		while (amountUndone > 0) {
 			m_cmdqueue->enqueueWriteBuffer(*m_hitsBufCL, CL_TRUE, 0,
 				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
 			cl::KernelFunctor traverseFunc(cl::Kernel(*m_bvhProgram, "traverseBVH"),
 				*m_cmdqueue, cl::NullRange, cl::NDRange(amountUndone), cl::NullRange);
 			traverseFunc(*m_raysBufCL, *m_bvhBufCL, *m_hitsBufCL);
-			int eee = m_cmdqueue->enqueueReadBuffer(*m_hitsBufCL, CL_TRUE, 0,
+			m_cmdqueue->enqueueReadBuffer(*m_hitsBufCL, CL_TRUE, 0,
 				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
 			Intersection curIntersect;
 			size_t newAmountUndone = 0;
@@ -173,10 +174,74 @@ namespace AGR
 		}
 	}
 
+	void BVH::PacketCheckOcclusions(std::vector<Ray>& rays, std::vector<float>& lengths,
+		std::vector<bool>& occlusionFlags)
+	{
+		occlusionFlags.resize(rays.size());
+		if (m_raysBuf.size() < rays.size()) {
+			m_raysBuf.resize(rays.size());
+			m_hitsBuf.resize(rays.size());
+		}
+		if (m_raysBufCLSize < rays.size()) {
+			if (m_raysBufCL) delete m_raysBufCL;
+			if (m_hitsBufCL) delete m_hitsBufCL;
+			m_raysBufCLSize = rays.size() * 2;
+			m_raysBufCL = new cl::Buffer(*m_context, CL_MEM_READ_ONLY,
+				m_raysBufCLSize * sizeof(m_raysBuf[0]));
+			m_hitsBufCL = new cl::Buffer(*m_context, CL_MEM_READ_WRITE,
+				m_raysBufCLSize * sizeof(m_hitsBuf[0]));
+		}
+		for (int i = 0; i < rays.size(); ++i) {
+			m_raysBuf[i].origin = { rays[i].origin.x, rays[i].origin.y, rays[i].origin.z };
+			glm::vec3 dir = rays[i].direction + glm::vec3(FLT_EPSILON);
+			m_raysBuf[i].dir = { dir.x, dir.y, dir.z };
+			m_raysBuf[i].inv_dir = { 1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z };
+			m_hitsBuf[i].rayNum = i;
+			m_hitsBuf[i].hitsFound = 0;
+			m_hitsBuf[i].lastNode = 0;
+			occlusionFlags[i] = false;
+		}
+		m_cmdqueue->enqueueWriteBuffer(*m_raysBufCL, CL_TRUE, 0,
+			rays.size() * sizeof(m_raysBuf[0]), &m_raysBuf[0]);
+		size_t amountUndone = rays.size();
+		while (amountUndone > 0) {
+			m_cmdqueue->enqueueWriteBuffer(*m_hitsBufCL, CL_TRUE, 0,
+				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
+			cl::KernelFunctor traverseFunc(cl::Kernel(*m_bvhProgram, "traverseBVH"),
+				*m_cmdqueue, cl::NullRange, cl::NDRange(amountUndone), cl::NullRange);
+			traverseFunc(*m_raysBufCL, *m_bvhBufCL, *m_hitsBufCL);
+			m_cmdqueue->enqueueReadBuffer(*m_hitsBufCL, CL_TRUE, 0,
+				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
+			Intersection curIntersect;
+			size_t newAmountUndone = 0;
+			for (int i = 0; i < amountUndone; ++i) {
+				int rayNum = m_hitsBuf[i].rayNum;
+				curIntersect.ray = rays[rayNum];
+				for (int j = 0; j < m_hitsBuf[i].hitsFound; ++j) {
+					size_t idx = m_gpuNodes[m_hitsBuf[i].leafsHits[j]].leftFirst;
+					if ((*m_primitives)[idx]->intersect(curIntersect)) {
+						if (curIntersect.ray_length < lengths[rayNum]) {
+							occlusionFlags[rayNum] = true;
+							m_hitsBuf[i].hitsFound = 0;
+						}
+					}
+				}
+				if (m_hitsBuf[i].hitsFound == 5 && m_hitsBuf[i].lastNode != -1) {
+					m_hitsBuf[newAmountUndone].lastNode = m_hitsBuf[i].lastNode;
+					m_hitsBuf[newAmountUndone].hitsFound = 0;
+					m_hitsBuf[newAmountUndone++].rayNum = m_hitsBuf[i].rayNum;
+				}
+			}
+			amountUndone = newAmountUndone;
+		}
+	}
+
 	void BVH::PacketTraverseSlow(std::vector<Ray>& rays, std::vector<Intersection>& intersect)
 	{
 		intersect.resize(rays.size());
 		for (int i = 0; i < rays.size(); ++i) {
+			intersect[i].ray = rays[i];
+			intersect[i].ray_length = -1;
 			Traverse(rays[i], intersect[i]);
 		}
 	}
@@ -317,7 +382,7 @@ namespace AGR
 			for (int i = 0; i < m_nodes[nodeNum].count; i++) {
 				test.ray = ray;
 				if ((*m_primitives)[m_nodes[nodeNum].leftFirst + i]->intersect(test)) {
-					if (intersect.ray_length > 0 && test.ray_length < intersect.ray_length) {
+					if (intersect.ray_length < 0 || test.ray_length < intersect.ray_length) {
 						intersect = test;
 						wasHit = true;
 					}

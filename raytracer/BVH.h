@@ -15,6 +15,8 @@ namespace AGR
 		void construct(std::vector<Primitive *>& primitives);
 		bool Traverse(const Ray& ray, Intersection& intersect);
 		void PacketTraverse(std::vector<Ray>& rays, std::vector<Intersection>& intersect);
+		void PacketCheckOcclusions(std::vector<Ray>& rays, 
+			std::vector<float>& lengths, std::vector<bool>& occlusionFlags);
 		void PacketTraverseSlow(std::vector<Ray>& rays, std::vector<Intersection>& intersect);
 	private:
 		struct Node
