@@ -13,6 +13,7 @@ namespace AGR
 		AABB(const glm::vec3& minPt, const glm::vec3& maxPt);
 		AABB(const std::vector<AABB>& boxes);
 		bool testIntersection(const Ray &r, const glm::vec3& invDir) const;
+		bool testOverlap(const AABB& other) const;
 		void extend(const AABB& other);
 		glm::vec3 getCenter() const;
 		glm::vec3 getDimensions() const;

@@ -9,7 +9,7 @@ namespace AGR {
 	friend class BVH;
 	public:
 		explicit Primitive(Material &m) :
-			m_material(&m), m_idx(-1) {}
+			m_material(&m) {}
 		virtual ~Primitive() {}
 		virtual bool intersect(Intersection &intersect) const = 0;
 		virtual void getTexCoordAndNormal(Intersection &intersect) const = 0;
@@ -19,8 +19,6 @@ namespace AGR {
 		Material *m_material;
 		AABB m_aabb;
 	private:
-		//index of an object in the Renderer's vector
-		int m_idx;
 		//used for BVH constructions
 		::uint64_t m_mortonCode;
 	};

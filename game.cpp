@@ -2,7 +2,6 @@
 #include "raytracer\samplers\ImageSampler.h"
 #include "raytracer\samplers\CheckboardSampler.h"
 #include "raytracer\samplers\ColorSampler.h"
-#include "raytracer/lights/GlobalLight.h"
 #include "raytracer/lights/PointLight.h"
 #include "raytracer/renederables/Triangle.h"
 #include "raytracer/renederables/Mesh.h"
@@ -10,65 +9,72 @@
 // -----------------------------------------------------------
 // Initialize the application
 // -----------------------------------------------------------
-AGR::Mesh *mesh;
+AGR::Mesh *hum1;
+AGR::Mesh *hum2;
+AGR::Mesh *arm;
+AGR::Mesh *teap;
 void Game::Init()
 {
 	float aspectRatio = static_cast<float>(screen->GetWidth()) / screen->GetHeight();
 	m_cam = new AGR::Camera(aspectRatio, 80, glm::vec3(0, 1.5, -5));
 	s.push_back(new AGR::CheckboardSampler(glm::vec2(10, 5), glm::vec3(1, 1, 1), glm::vec3(0.5, 0.5, 0.5)));
 	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 1, 0.5)));
+	s.push_back(new AGR::ColorSampler(glm::vec3(1, 0.5, 0.5)));
 	s.push_back(new AGR::ImageSampler("earth.jpg"));
 	m.push_back(new AGR::Material);
-	m[0]->ambientIntensity = 0.1f;
-	m[0]->diffuseIntensity = 0.9f;
-	//m[0]->reflectionIntensity = 0.7f;
-	m[0]->shininess = 3.0f;
-	m[0]->texture = s[0];
+	//m[0]->ambientIntensity = 0.1f;
+	//m[0]->diffuseIntensity = 0.9f;
+	m[0]->reflectionIntensity = 0.7f;
+	m[0]->reflectionColor = glm::vec3(1, 0.5, 1);
 	m.push_back(new AGR::Material);
 	m[1]->refractionIntensity = 1.0f;
 	m[1]->refractionCoeficient = 1.71f;
 	m[1]->reflectionColor = glm::vec3(1, 1, 1);
 	m[1]->innerColor = glm::vec3(0, 0, 0.5);
 	m[1]->reflectionIntensity = 0.0f;
-	m[1]->absorption = 1.02f;
+	m[1]->absorption = 1.01f;
 	m.push_back(new AGR::Material);
-	m[2]->texture = s[2];
+	m[2]->texture = s[0];
 	m[2]->ambientIntensity = 0.2;
 	m[2]->diffuseIntensity = 0.8;
-	//m[2]->specularIntensity = 0.4;
+	m[2]->specularIntensity = 0.4;
 	m[2]->shininess = 5.0f;
 	m.push_back(new AGR::Material);
-	m[3]->texture = s[1];
-	m[3]->reflectionIntensity = 0.9;
-	//m[3]->ambientIntensity = 0.1;
-	//m[3]->diffuseIntensity = 0.2;
-	m[3]->reflectionColor = glm::vec3(1, 1, 1);
-	r.push_back(new AGR::Sphere(*m[1], glm::vec3(0, 1, 1), 1.0f));
-	r.push_back(new AGR::Sphere(*m[0], glm::vec3(2, 0, 10), 0.5f));
-	r.push_back(new AGR::Sphere(*m[2], glm::vec3(0, -0.5, 11.3), 2));
-	r.push_back(new AGR::Sphere(*m[0], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3()));
-	r.push_back(new AGR::Sphere(*m[3], glm::vec3(2.5, 1, 12.3)));
+	m[3]->texture = s[2];
+	m[3]->ambientIntensity = 0.2;
+	m[3]->diffuseIntensity = 0.8;
+	m[3]->specularIntensity = 0.4;
+	m[3]->shininess = 5.0f;
+	r.push_back(new AGR::Sphere(*m[2], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3()));
 	r.push_back(new AGR::Triangle(
 		AGR::Vertex(glm::vec3(0, 0, 40), glm::vec2(0, 0)),
 		AGR::Vertex(glm::vec3(10, 0, 50), glm::vec2(0, 1)),
 		AGR::Vertex(glm::vec3(-10, 0, 50), glm::vec2(1, 0)), 
 		*m[0], true, false, false));
-	mesh = new AGR::Mesh(*m[1]);
-	mesh->load("tea-u.obj", AGR::FLAT);
-	mesh->setRotation(glm::vec3(0, 90, 0));
-	//mesh->setScale(glm::vec3(1.0f));
-	//mesh->setPosition(glm::vec3(0, 1, 1));
-	mesh->commitTransformations();
+	hum1 = new AGR::Mesh(*m[0]);
+	hum1->load("cube.obj", AGR::CONSISTENT);
+	hum1->setRotation(glm::vec3(0, 90, 0));
+	hum1->setScale(glm::vec3(0.15f));
+	hum1->setPosition(glm::vec3(-2, 0, 0));
+	hum1->commitTransformations();
+	hum2 = new AGR::Mesh(*m[1]);
+	hum2->load("cube.obj", AGR::CONSISTENT);
+	hum2->setRotation(glm::vec3(0, -90, 0));
+	hum2->setScale(glm::vec3(0.15f));
+	hum2->setPosition(glm::vec3(2, 0, 0));
+	hum2->commitTransformations();
+	arm = new AGR::Mesh(*m[3]);
+	arm->load("human.obj", AGR::CONSISTENT);
+	arm->setPosition(glm::vec3(0, 1, 3));
+	arm->commitTransformations();
+
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Renderer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
-	//m_scene->addRenderable(*r[0]);
-	//m_scene->addRenderable(*r[1]);
-	//m_scene->addRenderable(*r[2]);
-	m_scene->addRenderable(*r[3]);
-	//m_scene->addRenderable(*r[4]);
-	//m_scene->addRenderable(*r[5]);
-	m_scene->addRenderable(*mesh);
+	m_scene->addRenderable(*r[0]);
+	m_scene->addRenderable(*hum1);
+	m_scene->addRenderable(*hum2);
+	m_scene->addRenderable(*arm);
 	m_scene->addLight(*l[0]);
 	m_scene->addLight(*l[1]);
 }
@@ -99,11 +105,11 @@ void Game::Tick( float _DT )
 	memcpy(screen->GetBuffer(), m_scene->getImage(),
 		m_scene->getResolution().x * m_scene->getResolution().y * sizeof(Pixel));
 	screen->Print(std::to_string(after - before).c_str(), 10, 10, 0xFF0000);
-	glm::vec3 rot = ((AGR::Sphere *)r[2])->getRotation();
-	rot.y += 5;
+	static float rot = 0;
+	rot += 10;
 	//((AGR::Sphere *)r[2])->setRotation(rot);
-	//mesh->setRotation(rot);
-	//mesh->commitTransformations();
+	arm->setRotation(glm::vec3(0, rot, 0));
+	arm->commitTransformations();
 }
 
 void Game::MouseDown(int _Button)
@@ -114,8 +120,6 @@ void Game::MouseDown(int _Button)
 	m_mousePos.x = x;
 	m_mousePos.y = y;
 	m_scene->testRay(x, y);
-	mesh->setPosition(glm::vec3(0, 10, 0));
-	mesh->commitTransformations();
 }
 
 void Game::MouseMove(int _X, int _Y)

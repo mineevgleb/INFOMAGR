@@ -41,14 +41,17 @@ namespace AGR
 		return (tmax > 0 && tmax > tmin);
 	}
 
+	bool AABB::testOverlap(const AABB& other) const 
+	{
+		glm::vec3 minPt = glm::max(m_minPt, other.m_minPt);
+		glm::vec3 maxPt = glm::min(m_maxPt, other.m_maxPt);
+		return (minPt.x < maxPt.x &&  minPt.y < maxPt.y && minPt.z < maxPt.z);
+	}
+
 	void AABB::extend(const AABB& other)
 	{
-		m_minPt.x = fmin(other.m_minPt.x, m_minPt.x);
-		m_minPt.y = fmin(other.m_minPt.y, m_minPt.y);
-		m_minPt.z = fmin(other.m_minPt.z, m_minPt.z);
-		m_maxPt.x = fmax(other.m_maxPt.x, m_maxPt.x);
-		m_maxPt.y = fmax(other.m_maxPt.y, m_maxPt.y);
-		m_maxPt.z = fmax(other.m_maxPt.z, m_maxPt.z);
+		m_minPt = glm::min(m_minPt, other.m_minPt);
+		m_maxPt = glm::max(m_maxPt, other.m_maxPt);
 	}
 
 	glm::vec3 AABB::getCenter() const

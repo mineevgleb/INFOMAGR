@@ -94,7 +94,7 @@ namespace AGR
 				t->commitTransformations();
 			}
 		}
-
+		importer.FreeScene();
 		return true;
 	}
 

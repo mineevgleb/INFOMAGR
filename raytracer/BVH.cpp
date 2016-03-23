@@ -1,21 +1,9 @@
 #include "BVH.h"
 #include "util.h"
-#include <algorithm>
 #include <fstream>
+#include <ppl.h>
+#include <complex>
 
-/*
-TODO
-+Morton codes
-+Sort
-Hierarchy
-Traversal
-Check
-Parallelize
-	Understand OCL
-	Parallelize build
-	Parallelize traverse
-Understand 2nd paper
-*/
 
 namespace AGR
 {
@@ -30,7 +18,7 @@ namespace AGR
 				}
 			}
 		}
-		std::ifstream kernelSource("raytracer\\gpu\\bvh_traversal.cl");
+		std::ifstream kernelSource("bvh_traversal.cl");
 		std::string kernelString((std::istreambuf_iterator<char>(kernelSource)),
 			(std::istreambuf_iterator<char>()));
 		cl::Program::Sources sources;
@@ -43,6 +31,7 @@ namespace AGR
 			throw std::runtime_error("Kernel build error");
 		}
 		m_cmdqueue = new cl::CommandQueue(*m_context, *deviceToUse);
+		m_hitsAmBufCL = new cl::Buffer(*m_context, CL_MEM_READ_WRITE, sizeof(cl_int));
 	}
 
 	BVH::~BVH()
@@ -54,18 +43,10 @@ namespace AGR
 		delete m_bvhProgram;
 	}
 
-	void BVH::construct(std::vector<Primitive*>& primitives)
+	void BVH::constructLinear(std::vector<Primitive*>& primitives)
 	{
-		m_primitives = &primitives;
-		AABB surround = getSurroundAABB(&primitives[0], primitives.size());
-		glm::vec3 surroundMin = surround.getMinPt();
-		glm::vec3 surroundMax = surround.getMaxPt();
-		for (int i = 0; i < primitives.size(); ++i) {
-			glm::vec3 bbCenter = primitives[i]->getBoundingBox().getCenter();
-			primitives[i]->m_mortonCode = CalcMortonCode(bbCenter, surroundMin, surroundMax);
-		}
-		std::sort(primitives.begin(), primitives.end(),
-			[](Primitive *a, Primitive *b)->bool{return a->m_mortonCode < b->m_mortonCode;});
+		m_primitives = primitives;
+		sortPrimitivesByMortonCodes();
 		m_nodesCount = 1;
 		m_nodes.resize(primitives.size() * 2 - 1);
 		m_leafFlags.resize(primitives.size() * 2 - 1);
@@ -73,33 +54,36 @@ namespace AGR
 		Subdivide(0, &primitives[0], 0);
 		calcAABB(0);
 		//improveBVH(0);
-		//improveBVH(0);
-		//improveBVH(0);
-		//collapseSomeNodes(0);
-		m_gpuNodes.resize(m_nodesCount);
-		for (int i = 0; i < m_nodesCount; ++i) {
-			if (!m_leafFlags[i])
-			{
-				m_nodes[i].count = -1;
-				m_gpuNodes[m_nodes[i].leftFirst].parent = i;
-				m_gpuNodes[m_nodes[i].leftFirst + 1].parent = i;
+		collapseSomeNodes(0);
+		fillGPUNodes();
+	}
+
+	void BVH::constructAgglomerative(std::vector<Primitive*>& primitives)
+	{
+		m_primitives = primitives;
+		m_nodes.resize(m_primitives.size() * 2);
+		m_leafFlags.resize(m_primitives.size() * 2);
+		m_nodesCount = 1;
+		std::vector<NodePair> nodes(m_primitives.size());
+		for (int i = 0; i < m_primitives.size(); ++i) {
+			nodes[i] = { i + 1, nullptr, FLT_MAX };
+			m_nodes[m_nodesCount].leftFirst = i;
+			m_nodes[m_nodesCount].bounds = m_primitives[i]->getBoundingBox();
+			m_nodes[m_nodesCount].count = 1;
+			m_leafFlags[m_nodesCount++] = true;
+		}
+		int newSize = BuildTreeAgglomerative(&nodes[0], m_primitives.size());
+		int curPos = 0;
+		for (int i = 0; i < m_primitives.size(); ++i) {
+			if (nodes[i].nodeNum > 0) {
+				nodes[curPos] = nodes[i];
+				if (i != curPos) nodes[i].nodeNum = -1;
+				curPos++;
 			}
-			m_gpuNodes[i].leftFirst = m_nodes[i].leftFirst;
-			m_gpuNodes[i].count = m_nodes[i].count;
-			glm::vec3 minPt = m_nodes[i].bounds.getMinPt() + glm::vec3(FLT_EPSILON);
-			glm::vec3 maxPt = m_nodes[i].bounds.getMaxPt() + glm::vec3(FLT_EPSILON);;
-			m_gpuNodes[i].bounds.minpt = {minPt.x, minPt.y, minPt.z};
-			m_gpuNodes[i].bounds.maxpt = { maxPt.x, maxPt.y, maxPt.z };
 		}
-		m_gpuNodes[0].parent = -1;
-		if (m_bvhbufSize < m_nodesCount) {
-			if (m_bvhBufCL) delete m_bvhBufCL;
-			m_bvhbufSize = m_nodesCount * 2;
-			m_bvhBufCL = new cl::Buffer(*m_context, CL_MEM_READ_ONLY,
-				sizeof(m_gpuNodes[0]) * m_bvhbufSize);
-		}
-		m_cmdqueue->enqueueWriteBuffer(*m_bvhBufCL, CL_TRUE, 0,
-			sizeof(m_gpuNodes[0]) * m_nodesCount, &m_gpuNodes[0]);
+		combineClusters(&nodes[0], newSize, 1);
+		m_nodes[0] = m_nodes[--m_nodesCount];
+		fillGPUNodes();
 	}
 
 	bool BVH::Traverse(const Ray& ray, Intersection& intersect)
@@ -115,59 +99,90 @@ namespace AGR
 	void BVH::PacketTraverse(std::vector<Ray>& rays, std::vector<Intersection>& intersect)
 	{
 		intersect.resize(rays.size());
+		static std::vector<int> rayStartsInArray;
 		if (m_raysBuf.size() < rays.size()) {
 			m_raysBuf.resize(rays.size());
-			m_hitsBuf.resize(rays.size());
+			m_hitsBuf.resize(rays.size() * 32);
+			m_restore.resize(rays.size());
+			rayStartsInArray.resize(rays.size());
 		}
 		if (m_raysBufCLSize < rays.size()) {
 			if (m_raysBufCL) delete m_raysBufCL;
+			if (m_restoreBufCL) delete m_restoreBufCL;
 			if (m_hitsBufCL) delete m_hitsBufCL;
-			m_raysBufCLSize = rays.size() * 2;
+			m_raysBufCLSize = rays.size();
 			m_raysBufCL = new cl::Buffer(*m_context, CL_MEM_READ_ONLY,
 				m_raysBufCLSize * sizeof(m_raysBuf[0]));
 			m_hitsBufCL = new cl::Buffer(*m_context, CL_MEM_READ_WRITE,
-				m_raysBufCLSize * sizeof(m_hitsBuf[0]));
+				m_raysBufCLSize * sizeof(m_hitsBuf[0]) * 32);
+			m_restoreBufCL = new cl::Buffer(*m_context, CL_MEM_READ_WRITE,
+				m_raysBufCLSize * sizeof(m_restoreBufCL[0]));
 		}
 		for (int i = 0; i < rays.size(); ++i) {
 			m_raysBuf[i].origin = { rays[i].origin.x, rays[i].origin.y, rays[i].origin.z };
 			glm::vec3 dir = rays[i].direction + glm::vec3(FLT_EPSILON);
 			m_raysBuf[i].dir = {dir.x, dir.y, dir.z};
 			m_raysBuf[i].inv_dir = { 1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z };
-			m_hitsBuf[i].rayNum = i;
-			m_hitsBuf[i].hitsFound = 0;
-			m_hitsBuf[i].lastNode = 0;
 			intersect[i].ray_length = -1;
 			intersect[i].ray = rays[i];
 		}
+		memset(&m_restore[0], 0, sizeof(m_restore[0]) *  rays.size());
 		m_cmdqueue->enqueueWriteBuffer(*m_raysBufCL, CL_TRUE, 0,
 			rays.size() * sizeof(m_raysBuf[0]), &m_raysBuf[0]);
-		size_t amountUndone = rays.size();
+		int amountUndone = rays.size();
+		cl_int zero = 0;
+		cl_int hitsAm;
 		while (amountUndone > 0) {
-			m_cmdqueue->enqueueWriteBuffer(*m_hitsBufCL, CL_TRUE, 0,
-				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
+			m_cmdqueue->enqueueWriteBuffer(*m_restoreBufCL, CL_TRUE, 0,
+				amountUndone * sizeof(m_restore[0]), &m_restore[0]);
+			m_cmdqueue->enqueueWriteBuffer(*m_hitsAmBufCL, CL_TRUE, 0,
+				sizeof(cl_int), &zero);
 			cl::KernelFunctor traverseFunc(cl::Kernel(*m_bvhProgram, "traverseBVH"),
 				*m_cmdqueue, cl::NullRange, cl::NDRange(amountUndone), cl::NullRange);
-			traverseFunc(*m_raysBufCL, *m_bvhBufCL, *m_hitsBufCL);
+			traverseFunc(*m_raysBufCL, *m_bvhBufCL, *m_hitsBufCL, *m_restoreBufCL, *m_hitsAmBufCL, 
+				static_cast<cl_int>(m_raysBufCLSize) * 32);
+			m_cmdqueue->enqueueReadBuffer(*m_hitsAmBufCL, CL_TRUE, 0,
+				sizeof(cl_int), &hitsAm);
 			m_cmdqueue->enqueueReadBuffer(*m_hitsBufCL, CL_TRUE, 0,
-				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
-			Intersection curIntersect;
-			size_t newAmountUndone = 0;
-			for (int i = 0; i < amountUndone; ++i) {
-				int rayNum = m_hitsBuf[i].rayNum;
+				hitsAm * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
+			m_cmdqueue->enqueueReadBuffer(*m_restoreBufCL, CL_TRUE, 0,
+				amountUndone * sizeof(m_restore[0]), &m_restore[0]);
+			std::atomic<int> newAmountUndone = 0;
+			concurrency::parallel_buffered_sort(m_hitsBuf.begin(), m_hitsBuf.begin() + hitsAm,
+				[](Hit_CL& a, Hit_CL& b)->bool {return a.rayNum != b.rayNum ? 
+			a.rayNum < b.rayNum : a.len < b.len;});
+			int curPos = 0;
+			for (int i = 0; i < hitsAm; ++i) {
+				if (i == 0 || m_hitsBuf[i].rayNum != m_hitsBuf[i - 1].rayNum) {
+					rayStartsInArray[curPos++] = i;
+				}
+			}
+			concurrency::parallel_for(0, amountUndone, 1,
+			[this, &rays, &intersect, &hitsAm](int i) {
+			//for (int i = 0; i < amountUndone; ++i){
+				Intersection curIntersect;
+				int beg = rayStartsInArray[i];
+				int rayNum = m_hitsBuf[beg].rayNum;
 				curIntersect.ray = rays[rayNum];
-				for (int j = 0; j < m_hitsBuf[i].hitsFound; ++j) {
-					size_t idx = m_gpuNodes[m_hitsBuf[i].leafsHits[j]].leftFirst;
-					if ((*m_primitives)[idx]->intersect(curIntersect)) {
-						if (curIntersect.ray_length < intersect[rayNum].ray_length
-							|| intersect[rayNum].ray_length < 0) {
-							intersect[rayNum] = curIntersect;
+				AABB firstAABB = m_nodes[0].bounds;
+				for (int j = beg; m_hitsBuf[j].rayNum == rayNum && j < hitsAm; ++j) {
+					if (!firstAABB.testOverlap(m_nodes[m_hitsBuf[j].nodeNum].bounds)) break;
+					size_t idx = m_gpuNodes[m_hitsBuf[j].nodeNum].leftFirst;
+					for (int k = 0; k < m_gpuNodes[m_hitsBuf[j].nodeNum].count; ++k) {
+						if (m_primitives[idx + k]->intersect(curIntersect)) {
+							if (curIntersect.ray_length < intersect[rayNum].ray_length
+								|| intersect[rayNum].ray_length < 0) {
+								firstAABB = curIntersect.p_object->getBoundingBox();
+								intersect[rayNum] = curIntersect;
+							}
 						}
 					}
 				}
-				if (m_hitsBuf[i].hitsFound == 5 && m_hitsBuf[i].lastNode != -1) {
-					m_hitsBuf[newAmountUndone].lastNode = m_hitsBuf[i].lastNode;
-					m_hitsBuf[newAmountUndone].hitsFound = 0;
-					m_hitsBuf[newAmountUndone++].rayNum = m_hitsBuf[i].rayNum;
+			});
+			for (int i = 0; i < amountUndone; ++i) {
+				if (m_restore[i].lastVisitedNode != -1) {
+					int idx = newAmountUndone++;
+					m_restore[idx] = m_restore[i];
 				}
 			}
 			amountUndone = newAmountUndone;
@@ -180,56 +195,70 @@ namespace AGR
 		occlusionFlags.resize(rays.size());
 		if (m_raysBuf.size() < rays.size()) {
 			m_raysBuf.resize(rays.size());
-			m_hitsBuf.resize(rays.size());
+			m_hitsBuf.resize(rays.size() * 32);
+			m_restore.resize(rays.size());
 		}
 		if (m_raysBufCLSize < rays.size()) {
 			if (m_raysBufCL) delete m_raysBufCL;
+			if (m_restoreBufCL) delete m_restoreBufCL;
 			if (m_hitsBufCL) delete m_hitsBufCL;
-			m_raysBufCLSize = rays.size() * 2;
+			m_raysBufCLSize = rays.size();
 			m_raysBufCL = new cl::Buffer(*m_context, CL_MEM_READ_ONLY,
 				m_raysBufCLSize * sizeof(m_raysBuf[0]));
 			m_hitsBufCL = new cl::Buffer(*m_context, CL_MEM_READ_WRITE,
-				m_raysBufCLSize * sizeof(m_hitsBuf[0]));
+				m_raysBufCLSize * sizeof(m_hitsBuf[0]) * 32);
+			m_restoreBufCL = new cl::Buffer(*m_context, CL_MEM_READ_WRITE,
+				m_raysBufCLSize * sizeof(m_restoreBufCL[0]));
 		}
 		for (int i = 0; i < rays.size(); ++i) {
 			m_raysBuf[i].origin = { rays[i].origin.x, rays[i].origin.y, rays[i].origin.z };
 			glm::vec3 dir = rays[i].direction + glm::vec3(FLT_EPSILON);
 			m_raysBuf[i].dir = { dir.x, dir.y, dir.z };
 			m_raysBuf[i].inv_dir = { 1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z };
-			m_hitsBuf[i].rayNum = i;
-			m_hitsBuf[i].hitsFound = 0;
-			m_hitsBuf[i].lastNode = 0;
 			occlusionFlags[i] = false;
 		}
+		memset(&m_restore[0], 0, sizeof(m_restore[0]) *  rays.size());
 		m_cmdqueue->enqueueWriteBuffer(*m_raysBufCL, CL_TRUE, 0,
 			rays.size() * sizeof(m_raysBuf[0]), &m_raysBuf[0]);
-		size_t amountUndone = rays.size();
+		int amountUndone = rays.size();
+		cl_int zero = 0;
+		cl_int hitsAm;
 		while (amountUndone > 0) {
-			m_cmdqueue->enqueueWriteBuffer(*m_hitsBufCL, CL_TRUE, 0,
-				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
+			m_cmdqueue->enqueueWriteBuffer(*m_restoreBufCL, CL_TRUE, 0,
+				amountUndone * sizeof(m_restore[0]), &m_restore[0]);
+			m_cmdqueue->enqueueWriteBuffer(*m_hitsAmBufCL, CL_TRUE, 0,
+				sizeof(cl_int), &zero);
 			cl::KernelFunctor traverseFunc(cl::Kernel(*m_bvhProgram, "traverseBVH"),
 				*m_cmdqueue, cl::NullRange, cl::NDRange(amountUndone), cl::NullRange);
-			traverseFunc(*m_raysBufCL, *m_bvhBufCL, *m_hitsBufCL);
+			traverseFunc(*m_raysBufCL, *m_bvhBufCL, *m_hitsBufCL, *m_restoreBufCL, *m_hitsAmBufCL, 
+				static_cast<cl_int>(m_raysBufCLSize) * 32);
+			m_cmdqueue->enqueueReadBuffer(*m_hitsAmBufCL, CL_TRUE, 0,
+				sizeof(cl_int), &hitsAm);
 			m_cmdqueue->enqueueReadBuffer(*m_hitsBufCL, CL_TRUE, 0,
-				amountUndone * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
-			Intersection curIntersect;
-			size_t newAmountUndone = 0;
-			for (int i = 0; i < amountUndone; ++i) {
+				hitsAm * sizeof(m_hitsBuf[0]), &m_hitsBuf[0]);
+			m_cmdqueue->enqueueReadBuffer(*m_restoreBufCL, CL_TRUE, 0,
+				amountUndone * sizeof(m_restore[0]), &m_restore[0]);
+			std::atomic<int> newAmountUndone = 0;
+			//concurrency::parallel_for(0, hitsAm, 1,
+			//[this, &rays, &intersect, &hitsAm](int i) {
+			for (int i = 0; i < hitsAm; ++i) {
+				Intersection curIntersect;
 				int rayNum = m_hitsBuf[i].rayNum;
+				if (occlusionFlags[rayNum]) continue;
 				curIntersect.ray = rays[rayNum];
-				for (int j = 0; j < m_hitsBuf[i].hitsFound; ++j) {
-					size_t idx = m_gpuNodes[m_hitsBuf[i].leafsHits[j]].leftFirst;
-					if ((*m_primitives)[idx]->intersect(curIntersect)) {
+				size_t idx = m_gpuNodes[m_hitsBuf[i].nodeNum].leftFirst;
+				for (int k = 0; k < m_gpuNodes[m_hitsBuf[i].nodeNum].count; ++k) {
+					if (m_primitives[idx + k]->intersect(curIntersect)) {
 						if (curIntersect.ray_length < lengths[rayNum]) {
 							occlusionFlags[rayNum] = true;
-							m_hitsBuf[i].hitsFound = 0;
+							break;
 						}
 					}
 				}
-				if (m_hitsBuf[i].hitsFound == 5 && m_hitsBuf[i].lastNode != -1) {
-					m_hitsBuf[newAmountUndone].lastNode = m_hitsBuf[i].lastNode;
-					m_hitsBuf[newAmountUndone].hitsFound = 0;
-					m_hitsBuf[newAmountUndone++].rayNum = m_hitsBuf[i].rayNum;
+			}//);
+			for (int i = 0; i < amountUndone; ++i) {
+				if (m_restore[i].lastVisitedNode != -1 && !occlusionFlags[m_restore[i].rayNum]) {
+					m_restore[newAmountUndone++] = m_restore[i];
 				}
 			}
 			amountUndone = newAmountUndone;
@@ -297,19 +326,20 @@ namespace AGR
 		}
 		m_leafFlags[nodeNum] = false;
 		m_nodes[nodeNum].leftFirst = m_nodesCount;
+		m_nodes[nodeNum].right = m_nodesCount + 1;
 		size_t split = findSplit(primitives, m_nodes[nodeNum].count);
 		m_nodesCount += 2;
 		m_nodes[m_nodes[nodeNum].leftFirst].count = split;
-		m_nodes[m_nodes[nodeNum].leftFirst + 1].count = m_nodes[nodeNum].count - split;
+		m_nodes[m_nodes[nodeNum].right].count = m_nodes[nodeNum].count - split;
 		Subdivide(m_nodes[nodeNum].leftFirst, primitives, first);
-		Subdivide(m_nodes[nodeNum].leftFirst + 1, &primitives[split], first + split);
+		Subdivide(m_nodes[nodeNum].right, &primitives[split], first + split);
 		depth--;
 	}
 
 	void BVH::calcAABB(int nodeNum)
 	{
 		if (m_nodes[nodeNum].count == 1) {
-			m_nodes[nodeNum].bounds = (*m_primitives)[m_nodes[nodeNum].leftFirst]->getBoundingBox();
+			m_nodes[nodeNum].bounds = m_primitives[m_nodes[nodeNum].leftFirst]->getBoundingBox();
 			return;
 		}
 		calcAABB(m_nodes[nodeNum].leftFirst);
@@ -325,10 +355,20 @@ namespace AGR
 			collapseSomeNodes(m_nodes[nodeNum].leftFirst + 1) && 
 			calcSAHvalueCollapsed(nodeNum) > calcSAHvalue(nodeNum)) {
 			m_leafFlags[nodeNum] = true;
-			m_nodes[nodeNum].leftFirst = m_nodes[m_nodes[nodeNum].leftFirst].leftFirst;
+			m_nodes[nodeNum].leftFirst = findFirstIndex(nodeNum);
 			return true;
 		}
 		return false;
+	}
+
+	int BVH::findFirstIndex(int nodeNum)
+	{
+		if (m_leafFlags[nodeNum]) {
+			return m_nodes[nodeNum].leftFirst;
+		}
+		int left = findFirstIndex(m_nodes[nodeNum].leftFirst);
+		int right = findFirstIndex(m_nodes[nodeNum].right);
+		return left + (right - left) * (right < left);
 	}
 
 	// Expands a 20-bit integer into 60 bits
@@ -355,6 +395,19 @@ namespace AGR
 		return zz | (yy << 1) | (xx << 2);
 	}
 
+	void BVH::sortPrimitivesByMortonCodes()
+	{
+		AABB surround = getSurroundAABB(&m_primitives[0], m_primitives.size());
+		glm::vec3 surroundMin = surround.getMinPt();
+		glm::vec3 surroundMax = surround.getMaxPt();
+		for (int i = 0; i < m_primitives.size(); ++i) {
+			glm::vec3 bbCenter = m_primitives[i]->getBoundingBox().getCenter();
+			m_primitives[i]->m_mortonCode = CalcMortonCode(bbCenter, surroundMin, surroundMax);
+		}
+		concurrency::parallel_buffered_sort(m_primitives.begin(), m_primitives.end(),
+			[](Primitive *a, Primitive *b)->bool {return a->m_mortonCode < b->m_mortonCode;});
+	}
+
 	float BVH::calcSAHvalue(int nodeNum)
 	{
 		if (m_leafFlags[nodeNum]) {
@@ -363,7 +416,7 @@ namespace AGR
 		}
 		return 1.2f * m_nodes[nodeNum].bounds.calcArea() +
 			calcSAHvalue(m_nodes[nodeNum].leftFirst) +
-			calcSAHvalue(m_nodes[nodeNum].leftFirst + 1);
+			calcSAHvalue(m_nodes[nodeNum].right);
 	}
 
 	float BVH::calcSAHvalueCollapsed(int nodeNum)
@@ -381,7 +434,7 @@ namespace AGR
 			bool wasHit = false;
 			for (int i = 0; i < m_nodes[nodeNum].count; i++) {
 				test.ray = ray;
-				if ((*m_primitives)[m_nodes[nodeNum].leftFirst + i]->intersect(test)) {
+				if (m_primitives[m_nodes[nodeNum].leftFirst + i]->intersect(test)) {
 					if (intersect.ray_length < 0 || test.ray_length < intersect.ray_length) {
 						intersect = test;
 						wasHit = true;
@@ -391,7 +444,7 @@ namespace AGR
 			return wasHit;
 		}
 		bool t1 = Traverse(ray, intersect, m_nodes[nodeNum].leftFirst, invRayDir);
-		bool t2 = Traverse(ray, intersect, m_nodes[nodeNum].leftFirst + 1, invRayDir);
+		bool t2 = Traverse(ray, intersect, m_nodes[nodeNum].right, invRayDir);
 		return t1 || t2;
 	}
 
@@ -400,7 +453,7 @@ namespace AGR
 		if (m_nodes[nodeNum].count < TREELET_SIZE) return;
 		int leafsCount = 2;
 		leafs[0] = m_nodes[nodeNum].leftFirst;
-		leafs[1] = m_nodes[nodeNum].leftFirst + 1;
+		leafs[1] = m_nodes[nodeNum].right;
 		childpairs[0] = m_nodes[nodeNum].leftFirst;
 		float areas[7];
 		areas[0] = m_nodes[leafs[0]].bounds.calcArea();
@@ -414,7 +467,7 @@ namespace AGR
 				nodeToExpand += (i - nodeToExpand) * cmp;
 			}
 			childpairs[leafsCount - 1] = m_nodes[leafs[nodeToExpand]].leftFirst;
-			leafs[leafsCount] = m_nodes[leafs[nodeToExpand]].leftFirst + 1;
+			leafs[leafsCount] = m_nodes[leafs[nodeToExpand]].right;
 			leafs[nodeToExpand] = m_nodes[leafs[nodeToExpand]].leftFirst;
 			areas[nodeToExpand] = m_nodes[leafs[nodeToExpand]].bounds.calcArea();
 			areas[leafsCount] = m_nodes[leafs[leafsCount]].bounds.calcArea();
@@ -485,6 +538,7 @@ namespace AGR
 			leafflags[i] = m_leafFlags[leafs[i]];
 		}
 		m_nodes[nodeNum].leftFirst = childpairs[0];
+		m_nodes[nodeNum].right = childpairs[0] + 1;
 		
 		executeReshape(setAm, bestPartitions, leafnodes, 
 			&childpairs[0], boxes, primitivesCount, leafflags);
@@ -506,6 +560,7 @@ namespace AGR
 				m_leafFlags[childpairs[0] + i] = leafFlags[index];
 			} else {
 				m_nodes[childpairs[0] + i].leftFirst = actualChildpairs[0];
+				m_nodes[childpairs[0] + i].right = actualChildpairs[0] + 1;
 				m_nodes[childpairs[0] + i].bounds = bounds[partition[i] - 1];
 				m_nodes[childpairs[0] + i].count = primitivescounts[partition[i] - 1];
 				m_leafFlags[childpairs[0] + i] = false;
@@ -520,10 +575,126 @@ namespace AGR
 	{
 		if (m_nodes[nodeNum].count < TREELET_SIZE) return;
 		improveBVH(m_nodes[nodeNum].leftFirst);
-		improveBVH(m_nodes[nodeNum].leftFirst + 1);
+		improveBVH(m_nodes[nodeNum].right);
 		int leafs[TREELET_SIZE];
 		int childpairs[TREELET_SIZE - 1];
 		composeTreelet(nodeNum, leafs, childpairs);
 		reshapeTreelet(nodeNum, leafs, childpairs);
+	}
+
+	void BVH::fillGPUNodes()
+	{
+		m_gpuNodes.resize(m_nodesCount);
+		for (int i = 0; i < m_nodesCount; ++i) {
+			if (!m_leafFlags[i])
+			{
+				m_nodes[i].count = -1;
+				m_gpuNodes[m_nodes[i].leftFirst].parent = i;
+				m_gpuNodes[m_nodes[i].right].parent = i;
+			}
+			m_gpuNodes[i].leftFirst = m_nodes[i].leftFirst;
+			m_gpuNodes[i].right = m_nodes[i].right;
+			m_gpuNodes[i].count = m_nodes[i].count;
+			glm::vec3 minPt = m_nodes[i].bounds.getMinPt() + glm::vec3(FLT_EPSILON);
+			glm::vec3 maxPt = m_nodes[i].bounds.getMaxPt() + glm::vec3(FLT_EPSILON);;
+			m_gpuNodes[i].bounds.minpt = { minPt.x, minPt.y, minPt.z };
+			m_gpuNodes[i].bounds.maxpt = { maxPt.x, maxPt.y, maxPt.z };
+		}
+		m_gpuNodes[0].parent = -1;
+		if (m_bvhbufSize < m_nodesCount) {
+			if (m_bvhBufCL) delete m_bvhBufCL;
+			m_bvhbufSize = m_nodesCount * 2;
+			m_bvhBufCL = new cl::Buffer(*m_context, CL_MEM_READ_ONLY,
+				sizeof(m_gpuNodes[0]) * m_bvhbufSize);
+		}
+		m_cmdqueue->enqueueWriteBuffer(*m_bvhBufCL, CL_TRUE, 0,
+			sizeof(m_gpuNodes[0]) * m_nodesCount, &m_gpuNodes[0]);
+	}
+
+	int BVH::BuildTreeAgglomerative(NodePair *nodesArr, int size)
+	{
+		int curPos = 0;
+		if (size <= CLUSTER_SIZE) {
+			int clusterSize = calcClusterSize(size);
+			combineClusters(nodesArr, size, clusterSize);
+			for (int i = 0; i < size; ++i) {
+				if (nodesArr[i].nodeNum > 0) {
+					nodesArr[curPos] = nodesArr[i];
+					if (i != curPos) nodesArr[i].nodeNum = -1;
+					curPos++;
+				}
+			}
+			return clusterSize;
+		}
+		int firstPrimitiveIdx = m_nodes[nodesArr->nodeNum].leftFirst;
+		size_t split = findSplit(&m_primitives[firstPrimitiveIdx], size);
+		int newSize = BuildTreeAgglomerative(nodesArr, split);
+		newSize += BuildTreeAgglomerative(&nodesArr[split], size - split);
+		for (int i = 0; i < size; ++i) {
+			if (nodesArr[i].nodeNum > 0) {
+				nodesArr[curPos] = nodesArr[i];
+				if (i != curPos) nodesArr[i].nodeNum = -1;
+				curPos++;
+			}
+		}
+		int clusterSize = calcClusterSize(newSize);
+		combineClusters(nodesArr, newSize, clusterSize);
+		return clusterSize;
+	}
+
+	void BVH::combineClusters(NodePair *nodesArr, int size, int amount)
+	{
+		int curSize = size;
+		for (int i = 0; i < size; ++i) {
+			findBestMatch(&nodesArr[i], nodesArr, size);
+		}
+		while (curSize > amount) {
+			NodePair *bestPair = nodesArr;
+			for (int i = 1; i < size; ++i) {
+				if (nodesArr[i].dist < bestPair->dist) {
+					bestPair = &nodesArr[i];
+				}
+			}
+			m_nodes[m_nodesCount].leftFirst = bestPair->nodeNum;
+			m_nodes[m_nodesCount].right = bestPair->closestNode->nodeNum;
+			m_nodes[m_nodesCount].bounds = m_nodes[bestPair->nodeNum].bounds;
+			m_nodes[m_nodesCount].bounds.extend(m_nodes[bestPair->closestNode->nodeNum].bounds);
+			m_leafFlags[m_nodesCount] = false;
+			NodePair* deleted1 = bestPair->closestNode;
+			NodePair* deleted2 = bestPair;
+			*bestPair->closestNode = { -1, nullptr, FLT_MAX };
+			*bestPair = { m_nodesCount, nullptr, 0.0f };
+			findBestMatch(bestPair, nodesArr, size);
+			for (int i = 0; i < size; ++i) {
+				if (nodesArr[i].closestNode == deleted1 ||
+					nodesArr[i].closestNode == deleted2) {
+					findBestMatch(&nodesArr[i], nodesArr, size);
+				}
+			}
+			++m_nodesCount;
+			--curSize;
+		}
+	}
+
+	void BVH::findBestMatch(NodePair* node, NodePair *nodesArr, int count)
+	{
+		node->dist = FLT_MAX;
+		for (int i = 0; i < count; ++i) {
+			if (node != &nodesArr[i] && nodesArr[i].nodeNum != -1) {
+				AABB united = m_nodes[node->nodeNum].bounds;
+				united.extend(m_nodes[nodesArr[i].nodeNum].bounds);
+				float curDist = united.calcArea();
+				if (curDist < node->dist) {
+					node->dist = curDist;
+					node->closestNode = &nodesArr[i];
+				}
+			}
+		}
+	}
+
+	int BVH::calcClusterSize(int amountOfNodes)
+	{
+		const float scaler = pow(CLUSTER_SIZE, 0.5f + CLUSTERFUNC_EPSILON) / 2;
+		return round(scaler * pow(amountOfNodes, 0.5f - CLUSTERFUNC_EPSILON));
 	}
 }

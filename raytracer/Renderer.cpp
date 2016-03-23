@@ -1,5 +1,4 @@
 #include "Renderer.h"
-#include "renederables/Sphere.h"
 
 namespace AGR {
 	Renderer::Renderer(const Camera& c, const glm::vec3& backgroundColor, 
@@ -15,10 +14,9 @@ namespace AGR {
 		if (platforms.size() == 0) {
 			throw std::runtime_error("No OpenCL platforms found");
 		}
-
-		cl::Platform platformToUse = platforms[0];
+		cl::Platform platformToUse = platforms[2];
 		std::vector<cl::Device> devices;
-		platformToUse.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+		platformToUse.getDevices(CL_DEVICE_TYPE_CPU, &devices);
 		if (devices.size() == 0) {
 			throw std::runtime_error("No OpenCL GPU devices found for default platform");
 		}
@@ -36,16 +34,20 @@ namespace AGR {
 
 	void Renderer::addRenderable(Primitive& r)
 	{
-		r.m_idx = static_cast<int>(m_primitives.size());
-		m_primitives.push_back(&r);
+		if (m_primitivesIndices.try_emplace(&r, m_primitives.size()).second) {
+			m_primitives.push_back(&r);
+		}
 	}
 
 	void Renderer::removeRenderable(Primitive& r)
 	{
-		if (r.m_idx > -1 && r.m_idx < m_primitives.size()) {
-			m_primitives[r.m_idx] = *m_primitives.rbegin();
+		volatile int a = 0;
+		auto it = m_primitivesIndices.find(&r);
+		if (it != m_primitivesIndices.end()) {
+			m_primitivesIndices.insert_or_assign(*m_primitives.rbegin(), it->second);
+			m_primitives[it->second] = *m_primitives.rbegin();
 			m_primitives.pop_back();
-			r.m_idx = -1;
+			m_primitivesIndices.erase(it);
 		}
 	}
 
@@ -58,8 +60,8 @@ namespace AGR {
 
 	void Renderer::removeRenderable(Mesh& m)
 	{
-		for (Triangle *t : m.m_triangles) {
-			removeRenderable(*t);
+		for (int i = 0; i < m.m_triangles.size(); ++i) {
+			removeRenderable(*m.m_triangles[i]);
 		}
 	}
 
@@ -85,7 +87,7 @@ namespace AGR {
 
 	void Renderer::render(const glm::uvec2 & resolution)
 	{
-		m_bvh->construct(m_primitives);
+		m_bvh->constructAgglomerative(m_primitives);
 		if (resolution != m_resolution) {
 			delete[] m_image;
 			delete[] m_highpImage;
@@ -149,7 +151,7 @@ namespace AGR {
 			processMissedRays(intersections);
 			for (int j = 0; j < intersections.size(); ++j) {
 				intersections[j].p_object->getTexCoordAndNormal(intersections[j]);
-				if (test && i > 0) {
+				/*if (test && i > 0) {
 					for (int k = 0; k <= 30; ++k) {
 						Material* m = new Material();
 						m->reflectionIntensity = 1;
@@ -160,9 +162,9 @@ namespace AGR {
 						Sphere *s = new Sphere(*m, pt, r);
 						addRenderable(*s);
 					}
-				}
+				}*/
 				Ray& r = intersections[j].ray;
-				if (r.surroundMaterial) {
+				if (r.surroundMaterial && r.surroundMaterial == intersections[j].p_object->getMaterial()) {
 					const Material *m = r.surroundMaterial;
 					float remainedIntensity = glm::exp(-glm::log(m->absorption) * intersections[j].ray_length);
 					*r.pixel += r.energy * (1.0f - remainedIntensity) * m->innerColor;
@@ -313,7 +315,7 @@ namespace AGR {
 			reflected.surroundMaterial = r.surroundMaterial;
 			calcReflectedRay(r.direction, hit.normal, reflected.direction);
 			reflected.energy = reflEnergy;
-			//reflected.pixel = r.pixel;
+			reflected.pixel = r.pixel;
 		}
 	}
 

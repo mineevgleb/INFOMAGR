@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
+#include <map>
 #include <CL/cl.hpp>
-#include "renederables/Primitive.h"
+#include "renederables/Primitive.h" 
 #include "renederables/Mesh.h"
 #include "lights/Light.h"
 #include "Camera.h"
@@ -37,6 +38,7 @@ namespace AGR {
 			float n1, float n2) const;
 
 		std::vector<Primitive *> m_primitives;
+		std::map<Primitive *, int> m_primitivesIndices;
 		std::vector<const Light *> m_lights;
 		unsigned long *m_image;
 		glm::vec3 *m_highpImage;
