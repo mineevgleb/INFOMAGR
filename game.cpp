@@ -63,9 +63,10 @@ void Game::Init()
 	hum2->setScale(glm::vec3(0.15f));
 	hum2->setPosition(glm::vec3(2, 0, 0));
 	hum2->commitTransformations();
-	arm = new AGR::Mesh(*m[3]);
+	arm = new AGR::Mesh(*m[1]);
 	arm->load("human.obj", AGR::CONSISTENT);
-	arm->setPosition(glm::vec3(0, 1, 3));
+	arm->setPosition(glm::vec3(0, 0, 2));
+	arm->setScale(glm::vec3(0.15));
 	arm->commitTransformations();
 
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));

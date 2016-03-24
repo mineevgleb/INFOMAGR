@@ -87,7 +87,7 @@ namespace AGR {
 
 	void Renderer::render(const glm::uvec2 & resolution)
 	{
-		m_bvh->constructAgglomerative(m_primitives);
+		m_bvh->constructLinear(m_primitives);
 		if (resolution != m_resolution) {
 			delete[] m_image;
 			delete[] m_highpImage;
@@ -164,7 +164,7 @@ namespace AGR {
 					}
 				}*/
 				Ray& r = intersections[j].ray;
-				if (r.surroundMaterial && r.surroundMaterial == intersections[j].p_object->getMaterial()) {
+				if (r.surroundMaterial) {
 					const Material *m = r.surroundMaterial;
 					float remainedIntensity = glm::exp(-glm::log(m->absorption) * intersections[j].ray_length);
 					*r.pixel += r.energy * (1.0f - remainedIntensity) * m->innerColor;

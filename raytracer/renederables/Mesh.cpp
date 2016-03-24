@@ -1,82 +1,64 @@
 #include "Mesh.h"
-#include <assimp/Importer.hpp>    
-#include <assimp/scene.h>           
-#include <assimp/postprocess.h>
+#include <tiny_obj_loader.h>    
 #include "../util.h"
 #include <vector>
 
 namespace AGR
 {
-	void assimpVec2glmVec(const aiVector3D& from, glm::vec3& to)
-	{
-		to.x = from.x;
-		to.y = from.y;
-		to.z = from.z;
-	}
-
-	void assimpVec2glmVec(const aiVector3D& from, glm::vec2& to)
-	{
-		to.x = from.x;
-		to.y = from.y;
-	}
-
 	bool Mesh::load(const std::string& path, NormalType nt)
 	{
-		Assimp::Importer importer;
-		const aiScene *scene =
-			importer.ReadFile(path.c_str(),
-				aiProcessPreset_TargetRealtime_MaxQuality |
-				aiProcess_TransformUVCoords
-				);
-		if (!scene || ! scene->HasMeshes()) return false;
-		const aiMesh* mesh = scene->mMeshes[0];
-		if (!mesh->HasFaces()) return false;
-		bool hasNormals = mesh->HasNormals();
-		bool hasTexCoord = mesh->HasTextureCoords(0);
-		std::vector<std::vector<int>> facesForVertex(mesh->mNumVertices);
-		std::vector<std::vector<int>> numInFaceForVertex(mesh->mNumVertices);
-
-		for (size_t i = 0; i < mesh->mNumFaces; ++i) {
+		std::vector<tinyobj::material_t> materials;
+		std::vector<tinyobj::shape_t> shapes;
+		std::string err;
+		LoadObj(shapes, materials, err, path.c_str());
+		if (shapes.empty()) return false;
+		if (shapes[0].mesh.indices.empty()) return false;
+		if (shapes[0].mesh.normals.empty()) nt = FLAT;
+		bool hasTexCoord = !shapes[0].mesh.texcoords.empty();
+		std::vector<std::vector<int>> facesForVertex(shapes[0].mesh.positions.size() / 3);
+		std::vector<std::vector<int>> numInFaceForVertex(shapes[0].mesh.positions.size() / 3);
+		for (size_t i = 0; i < shapes[0].mesh.indices.size() / 3; ++i) {
 			Vertex a, b, c;
-			assimpVec2glmVec
-				(mesh->mVertices[mesh->mFaces[i].mIndices[0]], a.position);
-			assimpVec2glmVec
-				(mesh->mVertices[mesh->mFaces[i].mIndices[1]], b.position);
-			assimpVec2glmVec
-				(mesh->mVertices[mesh->mFaces[i].mIndices[2]], c.position);
-			if (hasNormals) {
-				assimpVec2glmVec
-					(mesh->mNormals[mesh->mFaces[i].mIndices[0]], a.normal);
-				assimpVec2glmVec
-					(mesh->mNormals[mesh->mFaces[i].mIndices[1]], b.normal);
-				assimpVec2glmVec
-					(mesh->mNormals[mesh->mFaces[i].mIndices[2]], c.normal);
+			float *tmp;
+			tmp = &shapes[0].mesh.positions[shapes[0].mesh.indices[i * 3] * 3];
+			a.position = glm::vec3(tmp[0], tmp[1], tmp[2]);
+			tmp = &shapes[0].mesh.positions[shapes[0].mesh.indices[i * 3 + 1] * 3];
+			b.position = glm::vec3(tmp[0], tmp[1], tmp[2]);
+			tmp = &shapes[0].mesh.positions[shapes[0].mesh.indices[i * 3 + 2] * 3];
+			c.position = glm::vec3(tmp[0], tmp[1], tmp[2]);
+			if (nt != FLAT) {
+				tmp = &shapes[0].mesh.normals[shapes[0].mesh.indices[i * 3] * 3];
+				a.normal = glm::normalize(glm::vec3(tmp[0], tmp[1], tmp[2]));
+				tmp = &shapes[0].mesh.normals[shapes[0].mesh.indices[i * 3 + 1] * 3];
+				b.normal = glm::normalize(glm::vec3(tmp[0], tmp[1], tmp[2]));
+				tmp = &shapes[0].mesh.normals[shapes[0].mesh.indices[i * 3 + 2] * 3];
+				c.normal = glm::normalize(glm::vec3(tmp[0], tmp[1], tmp[2]));
 			}
 
 			if (hasTexCoord) {
-				assimpVec2glmVec
-					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[0]], a.texCoord);
-				assimpVec2glmVec
-					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[1]], b.texCoord);
-				assimpVec2glmVec
-					(mesh->mTextureCoords[0][mesh->mFaces[i].mIndices[2]], c.texCoord);
+				tmp = &shapes[0].mesh.texcoords[shapes[0].mesh.indices[i * 3] * 2];
+				a.texCoord = glm::vec2(tmp[0], tmp[1]);
+				tmp = &shapes[0].mesh.texcoords[shapes[0].mesh.indices[i * 3 + 1] * 2];
+				b.texCoord = glm::vec2(tmp[0], tmp[1]);
+				tmp = &shapes[0].mesh.texcoords[shapes[0].mesh.indices[i * 3 + 2] * 2];
+				c.texCoord = glm::vec2(tmp[0], tmp[1]);
 			}
-			m_triangles.push_back(new Triangle(a, b, c, *m_material, hasTexCoord, 
-				hasNormals & (nt != FLAT)));
+			m_triangles.push_back(new Triangle(a, b, c, *m_material, hasTexCoord, nt != FLAT));
 			if (nt == CONSISTENT) {
-				facesForVertex[mesh->mFaces[i].mIndices[0]].push_back(i);
-				facesForVertex[mesh->mFaces[i].mIndices[1]].push_back(i);
-				facesForVertex[mesh->mFaces[i].mIndices[2]].push_back(i);
-				numInFaceForVertex[mesh->mFaces[i].mIndices[0]].push_back(0);
-				numInFaceForVertex[mesh->mFaces[i].mIndices[1]].push_back(1);
-				numInFaceForVertex[mesh->mFaces[i].mIndices[2]].push_back(2);
+				facesForVertex[shapes[0].mesh.indices[i * 3]].push_back(i);
+				facesForVertex[shapes[0].mesh.indices[i * 3 + 1]].push_back(i);
+				facesForVertex[shapes[0].mesh.indices[i * 3 + 2]].push_back(i);
+				numInFaceForVertex[shapes[0].mesh.indices[i * 3]].push_back(0);
+				numInFaceForVertex[shapes[0].mesh.indices[i * 3 + 1]].push_back(1);
+				numInFaceForVertex[shapes[0].mesh.indices[i * 3 + 2]].push_back(2);
 			}
 		}
 
 		if (nt == CONSISTENT) {
 			for (int i = 0; i < facesForVertex.size(); ++i) {
-				glm::vec3 vertNormal;
-				assimpVec2glmVec(mesh->mNormals[i], vertNormal);
+				float *tmp = &shapes[0].mesh.normals[i * 3];
+				glm::vec3 vertNormal(tmp[0], tmp[1], tmp[2]);
+				vertNormal = glm::normalize(vertNormal);
 				float minCos = 2.0f;
 				for (int facenum : facesForVertex[i]) {
 					float curCos = glm::dot(vertNormal, m_triangles[facenum]->getFaceNormal());
@@ -94,7 +76,6 @@ namespace AGR
 				t->commitTransformations();
 			}
 		}
-		importer.FreeScene();
 		return true;
 	}
 
