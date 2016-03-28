@@ -2,7 +2,6 @@
 #include "Primitive.h" 
 #include "Triangle.h"
 #include <vector>
-#include <string>
 
 namespace AGR {
 	enum NormalType

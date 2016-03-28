@@ -1,5 +1,4 @@
 #include "AABB.h"
-#include "cmath"
 
 namespace AGR
 {
@@ -15,11 +14,10 @@ namespace AGR
 		}
 	}
 
-	bool AABB::testIntersection(const Ray& r, const glm::vec3& invDir) const
+	bool AABB::intersect(const Ray& r, float &dist) const
 	{
-		glm::vec3 t1 = (m_minPt - r.origin) * invDir;
-		glm::vec3 t2 = (m_maxPt - r.origin) * invDir;
-
+		glm::vec3 t1 = (m_minPt - r.origin) * r.invDirection;
+		glm::vec3 t2 = (m_maxPt - r.origin) * r.invDirection;
 		bool cmp = t1.x < t2.x;
 		float xmin = t2.x + (t1.x - t2.x) * cmp;
 		float xmax = t1.x + t2.x - xmin;
@@ -37,8 +35,8 @@ namespace AGR
 		float tmax = ymax + (xmax - ymax) * cmp;
 		cmp = zmax < tmax;
 		tmax += cmp * (zmax - tmax);
-
-		return (tmax > 0 && tmax > tmin);
+		dist = tmin;
+		return tmax > 0 && tmax > tmin;
 	}
 
 	bool AABB::testOverlap(const AABB& other) const 

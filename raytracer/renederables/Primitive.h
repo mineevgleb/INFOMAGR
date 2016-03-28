@@ -11,8 +11,9 @@ namespace AGR {
 		explicit Primitive(Material &m) :
 			m_material(&m) {}
 		virtual ~Primitive() {}
-		virtual bool intersect(Intersection &intersect) const = 0;
-		virtual void getTexCoordAndNormal(Intersection &intersect) const = 0;
+		virtual float intersect(const Ray &r) const = 0;
+		virtual void getTexCoordAndNormal(const Ray& r, float dist, 
+			glm::vec2& texCoord, glm::vec3& normal) const = 0;
 		const AABB& getBoundingBox() const { return m_aabb; }
 		const Material* getMaterial() const { return m_material; }
 	protected:

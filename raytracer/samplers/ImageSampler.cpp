@@ -26,8 +26,7 @@ namespace AGR {
 
 	void ImageSampler::LoadImage(const std::string& filename)
 	{
-		FREE_IMAGE_FORMAT fif = FIF_UNKNOWN;
-		fif = FreeImage_GetFileType(filename.c_str(), 0);
+		FREE_IMAGE_FORMAT fif = FreeImage_GetFileType(filename.c_str(), 0);
 		if (fif == FIF_UNKNOWN) fif = FreeImage_GetFIFFromFilename(filename.c_str());
 		m_bmp = FreeImage_Load(fif, filename.c_str());
 		m_resolution.x = FreeImage_GetWidth(m_bmp);

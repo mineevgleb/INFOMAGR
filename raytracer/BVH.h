@@ -1,7 +1,6 @@
 #pragma once
 #include <CL/cl.hpp>
 #include <vector>
-#include <list>
 #include "renederables/Primitive.h"
 #include "AABB.h"
 #include "gpu/opencl_structs.h"
@@ -15,7 +14,7 @@ namespace AGR
 		~BVH();
 		void constructLinear(std::vector<Primitive *>& primitives);
 		void constructAgglomerative(std::vector<Primitive *>& primitives);
-		bool Traverse(const Ray& ray, Intersection& intersect);
+		bool Traverse(Ray& ray, Intersection& intersect);
 		void PacketTraverse(std::vector<Ray>& rays, std::vector<Intersection>& intersect);
 		void PacketCheckOcclusions(std::vector<Ray>& rays, 
 			std::vector<float>& lengths, std::vector<bool>& occlusionFlags);
@@ -27,16 +26,7 @@ namespace AGR
 			int leftFirst;
 			int right;
 			int count;
-		};
-		struct ConstructNode
-		{
-			AABB bounds;
-			int leftFirst;
-			int count;
-			float SAH;
-			float SAHcollapsed;
-			bool isLeaf;
-			int index;
+			int parent;
 		};
 		AABB getSurroundAABB(Primitive** primitives, size_t size) const;
 		size_t findSplit(Primitive** primitives, size_t size);
@@ -49,7 +39,10 @@ namespace AGR
 		void sortPrimitivesByMortonCodes();
 		float calcSAHvalue(int nodeNum);
 		float calcSAHvalueCollapsed(int nodeNum);
-		bool Traverse(const Ray& ray, Intersection& intersect, int nodeNum, glm::vec3& invRayDir);
+		void calcIntercestionsCPU(std::vector<Ray> &rays, 
+			std::vector<IntersectRequest_CL> &requests, std::vector<Intersection_CL> &results);
+		bool Traverse(Ray& ray, Intersection& intersect, int nodeNum);
+		void intersectWithPrimitives(int nodeNum, Ray& r, Intersection& hit);
 		void composeTreelet(int nodeNum, int* leafs, int* childpairs);
 		void reshapeTreelet(int nodeNum, const int* leafs, const int* childpairs);
 		const int* executeReshape(::uint32_t curPartition, const ::uint32_t *bestPartitions, 
@@ -69,7 +62,7 @@ namespace AGR
 		void combineClusters(NodePair *nodesArr, int size,
 			int amount);
 		void findBestMatch(NodePair* node, NodePair *nodesArr, int count);
-		int calcClusterSize(int amountOfNodes);
+		int calcClusterSize(int amountOfNodes) const;
 
 
 		std::vector<Primitive *> m_primitives;
@@ -79,13 +72,8 @@ namespace AGR
 		int m_nodesCount;
 		std::vector<std::vector<unsigned int>> m_setsDescriptions;
 
-		int depth = 0;
-		int maxdepth = 0;
-
-		std::vector<BVHnode_CL> m_gpuNodes;
+		std::vector<AABB_CL> m_boundsBuf;
 		std::vector<Ray_CL> m_raysBuf;
-		std::vector<Hit_CL> m_hitsBuf;
-		std::vector<IncompleteTraversal_CL> m_restore;
 
 		cl::Program *m_bvhProgram;
 		cl::Context *m_context;

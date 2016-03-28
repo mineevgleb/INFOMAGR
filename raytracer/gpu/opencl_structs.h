@@ -7,15 +7,6 @@ struct AABB_CL
 	cl_float3 maxpt;
 };
 
-struct BVHnode_CL
-{
-	AABB_CL bounds;
-	cl_int count;
-	cl_int leftFirst;
-	cl_int right;
-	cl_int parent;
-};
-
 struct Ray_CL
 {
 	cl_float3 origin;
@@ -23,25 +14,14 @@ struct Ray_CL
 	cl_float3 inv_dir;
 };
 
-#define HIT_BUF_SIZE 5
-struct HitRecord_CL
+struct IntersectRequest_CL
 {
-	cl_int rayNum;
-	cl_int leafsHits[HIT_BUF_SIZE];
-	cl_float hitLengths[HIT_BUF_SIZE];
-	cl_int lastNode;
-	cl_int hitsFound;
+	int rayNum;
+	int nodeNum;
 };
 
-struct Hit_CL
+union Intersection_CL
 {
-	cl_int rayNum;
-	cl_int nodeNum;
-	cl_float len;
-};
-
-struct IncompleteTraversal_CL
-{
-	cl_int rayNum;
-	cl_int lastVisitedNode;
+	unsigned int flag;
+	float len;
 };

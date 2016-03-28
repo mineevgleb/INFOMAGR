@@ -16,38 +16,38 @@ namespace AGR
 		commitTransformations();
 	}
 
-	bool Triangle::intersect(Intersection& intersect) const
+	float Triangle::intersect(const Ray &r) const
 	{
-		float denom = glm::dot(intersect.ray.direction, m_normal);
+		float denom = glm::dot(r.direction, m_normal);
 		if (glm::abs(denom) < FLT_EPSILON) return false;
-		glm::vec3 tvec = m_vert[0].position - intersect.ray.origin;
-		intersect.ray_length = glm::dot(tvec, m_normal) / denom;
-		if (intersect.ray_length < 0) return false;
-		intersect.hitPt = intersect.ray.origin + 
-			intersect.ray.direction * intersect.ray_length;
+		glm::vec3 tvec = m_vert[0].position - r.origin;
+		float dist = glm::dot(tvec, m_normal) / denom;
+		if (dist < 0) return -1.0f;
+		glm::vec3 hitPt = r.origin + 
+			r.direction * dist;
 		glm::vec3 baryc;
-		if (!calcBarycentricCoord(intersect.hitPt, baryc, m_limit)) return false;
-		intersect.p_object = this;
-		return true;
+		return calcBarycentricCoord(hitPt, baryc, m_limit) ? dist : -1.0f;
 	}
 
-	void Triangle::getTexCoordAndNormal(Intersection& intersect) const
+	void Triangle::getTexCoordAndNormal(const Ray& r, float dist,
+		glm::vec2& texCoord, glm::vec3& normal) const
 	{
+		glm::vec3 pt = r.direction * dist + r.origin;
 		glm::vec3 baryc;
-		calcBarycentricCoord(intersect.hitPt, baryc, false);
+		calcBarycentricCoord(pt, baryc, false);
 		
 		if (m_material->isTexCoordRequired()) {
-			intersect.texCoord = m_vert[0].texCoord * baryc.x +
+			texCoord = m_vert[0].texCoord * baryc.x +
 				m_vert[1].texCoord * baryc.y +
 				m_vert[2].texCoord * baryc.z;
 		}
 
 		if (m_useVertNormals) {
-			intersect.normal = glm::normalize(m_vert[0].normal * baryc.x +
+			normal = glm::normalize(m_vert[0].normal * baryc.x +
 				m_vert[1].normal * baryc.y +
 				m_vert[2].normal * baryc.z);
-			if (glm::dot(-intersect.ray.direction, m_normal) < 0) {
-				intersect.normal *= -1;
+			if (glm::dot(-r.direction, m_normal) < 0) {
+				normal *= -1;
 			}
 			if (m_vert[0].alpha > 0) {
 				//some black magic with consistent normals calculation
@@ -58,18 +58,18 @@ namespace AGR
 				float q = 1.0f - (2.0f / M_PI) * alphaAtPt;
 				q *= q;
 				q /= 1.0f + 2.0f * (1.0f - (2.0f / M_PI) * alphaAtPt);
-				float b = glm::dot(-intersect.ray.direction, intersect.normal);
+				float b = glm::dot(-r.direction, normal);
 				float g = 1.0f + q * (b - 1);
 				float p = glm::sqrt((q * (1 + g)) / (1 + b));
-				glm::vec3 refl = (g + p * b) * intersect.normal 
-					+ p * intersect.ray.direction;
-				intersect.normal = glm::normalize(refl - intersect.ray.direction);
+				glm::vec3 refl = (g + p * b) * normal 
+					+ p * r.direction;
+				normal = glm::normalize(refl - r.direction);
 			}
 		}
 		else {
-			intersect.normal = m_normal;
-			if (glm::dot(-intersect.ray.direction, m_normal) < 0) {
-				intersect.normal *= -1;
+			normal = m_normal;
+			if (glm::dot(-r.direction, m_normal) < 0) {
+				normal *= -1;
 			}
 		}
 	}
@@ -134,7 +134,6 @@ namespace AGR
 		m_invdenom = 1.0f / (m_d00 * m_d11 - m_d01 * m_d01);
 		glm::vec3 minPt = glm::min(glm::min(m_vert[0].position, m_vert[1].position), m_vert[2].position);
 		glm::vec3 maxPt = glm::max(glm::max(m_vert[0].position, m_vert[1].position), m_vert[2].position);;
-		glm::vec3 dim = maxPt - minPt;
 		minPt -= glm::vec3(0.01f);
 		maxPt += glm::vec3(0.01f);
 		m_aabb = AABB(minPt, maxPt);

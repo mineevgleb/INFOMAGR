@@ -27,9 +27,11 @@ namespace AGR {
 		void testRay(int x, int y);
 	private:
 		void traceRays(std::vector<Ray> &rays, bool test);
-		void processMissedRays(std::vector<Intersection> &intersections) const;
-		void gatherLight(std::vector<Intersection> &intersections);
-		void produceSecondaryRays(Intersection& hit, Ray& reflected, Ray& refracted);
+		void processMissedRays(std::vector<Ray> &rays, std::vector<Intersection> &intersections) const;
+		void gatherLight(std::vector<Ray> &rays, std::vector<Intersection> &intersections,
+			std::vector<glm::vec2> &texCoords, std::vector<glm::vec3> &normals);
+		void produceSecondaryRays(Ray& r, Intersection& hit, glm::vec3& normal, 
+			Ray& reflected, Ray& refracted) const;
 		bool calcRefractedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,
 			float n1, float n2, glm::vec3& refracted) const;
 		void calcReflectedRay(const glm::vec3 &incomingRay, const glm::vec3 &normal,

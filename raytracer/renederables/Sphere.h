@@ -8,8 +8,9 @@ namespace AGR {
 		Sphere(Material& m, const glm::vec3& position = glm::vec3(), float radius = 1.0f,
 			const glm::vec3& rotation = glm::vec3());
 
-		virtual bool intersect(Intersection& intersect) const override;
-		void getTexCoordAndNormal(Intersection& intersect) const override;
+		float intersect(const Ray &r) const override;
+		void getTexCoordAndNormal(const Ray& r, float dist,
+			glm::vec2& texCoord, glm::vec3& normal) const override;
 
 		const glm::vec3& getPosition() const;
 		void setPosition(const glm::vec3& position);

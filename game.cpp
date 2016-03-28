@@ -35,7 +35,7 @@ void Game::Init()
 	m[1]->absorption = 1.01f;
 	m.push_back(new AGR::Material);
 	m[2]->texture = s[0];
-	m[2]->ambientIntensity = 0.2;
+	m[2]->ambientIntensity = 0.4;
 	m[2]->diffuseIntensity = 0.8;
 	m[2]->specularIntensity = 0.4;
 	m[2]->shininess = 5.0f;
@@ -64,9 +64,9 @@ void Game::Init()
 	hum2->setPosition(glm::vec3(2, 0, 0));
 	hum2->commitTransformations();
 	arm = new AGR::Mesh(*m[1]);
-	arm->load("human.obj", AGR::CONSISTENT);
+	arm->load("bunny.obj", AGR::CONSISTENT);
 	arm->setPosition(glm::vec3(0, 0, 2));
-	arm->setScale(glm::vec3(0.15));
+	//arm->setScale(glm::vec3(0.15));
 	arm->commitTransformations();
 
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
@@ -108,7 +108,7 @@ void Game::Tick( float _DT )
 	screen->Print(std::to_string(after - before).c_str(), 10, 10, 0xFF0000);
 	static float rot = 0;
 	rot += 10;
-	//((AGR::Sphere *)r[2])->setRotation(rot);
+//	((AGR::Sphere *)r[2])->setRotation(rot);
 	arm->setRotation(glm::vec3(0, rot, 0));
 	arm->commitTransformations();
 }

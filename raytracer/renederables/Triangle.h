@@ -27,8 +27,9 @@ namespace AGR {
 				 bool useVertNormals = false, bool limit = true);
 
 
-		bool intersect(Intersection& intersect) const override;
-		void getTexCoordAndNormal(Intersection& intersect) const override;
+		float intersect(const Ray &r) const override;
+		void getTexCoordAndNormal(const Ray& r, float dist,
+			glm::vec2& texCoord, glm::vec3& normal) const override;
 
 		void setVertex(int num, const Vertex& val);
 
