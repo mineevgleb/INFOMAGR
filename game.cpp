@@ -63,7 +63,7 @@ void Game::Init()
 	hum2->setScale(glm::vec3(0.15f));
 	hum2->setPosition(glm::vec3(2, 0, 0));
 	hum2->commitTransformations();
-	arm = new AGR::Mesh(*m[1]);
+	arm = new AGR::Mesh(*m[0]);
 	arm->load("bunny.obj", AGR::CONSISTENT);
 	arm->setPosition(glm::vec3(0, 0, 2));
 	//arm->setScale(glm::vec3(0.15));
@@ -108,7 +108,7 @@ void Game::Tick( float _DT )
 	screen->Print(std::to_string(after - before).c_str(), 10, 10, 0xFF0000);
 	static float rot = 0;
 	rot += 10;
-//	((AGR::Sphere *)r[2])->setRotation(rot);
+	//((AGR::Sphere *)r[2])->setRotation(rot);
 	arm->setRotation(glm::vec3(0, rot, 0));
 	arm->commitTransformations();
 }

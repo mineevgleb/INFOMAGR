@@ -8,27 +8,10 @@ namespace AGR {
 	{
 		m_image = new unsigned long[m_resolution.x * m_resolution.y];
 		m_highpImage = new glm::vec3[m_resolution.x * m_resolution.y];
-
-		std::vector<cl::Platform> platforms;
-		cl::Platform::get(&platforms);
-		if (platforms.size() == 0) {
-			throw std::runtime_error("No OpenCL platforms found");
-		}
-		cl::Platform platformToUse = platforms[0];
-		std::vector<cl::Device> devices;
-		platformToUse.getDevices(CL_DEVICE_TYPE_GPU, &devices);
-		if (devices.size() == 0) {
-			throw std::runtime_error("No OpenCL GPU devices found for default platform");
-		}
-		m_deviceToUse = devices[0];
-		m_context = new cl::Context({ m_deviceToUse });
-		m_bvh = new BVH(m_context, &m_deviceToUse);
 	}
 
 	Renderer::~Renderer()
 	{
-		delete m_bvh;
-		delete m_context;
 		delete[] m_image;
 	}
 
@@ -86,7 +69,7 @@ namespace AGR {
 
 	void Renderer::render(const glm::uvec2 & resolution)
 	{
-		m_bvh->constructAgglomerative(m_primitives);
+		m_bvh.construct(m_primitives);
 		if (resolution != m_resolution) {
 			delete[] m_image;
 			delete[] m_highpImage;
@@ -148,7 +131,7 @@ namespace AGR {
 		static std::vector<glm::vec2> texCoords;
 		intersections.resize(rays.size());
 		for (int i = 0; i < maxRecursionDepth && rays.size() > 0; ++i) {
-			m_bvh->PacketTraverse(rays, intersections);
+			m_bvh.PacketTraverse(rays, intersections);
 			processMissedRays(rays, intersections);
 			normals.resize(intersections.size());
 			texCoords.resize(intersections.size());
@@ -265,31 +248,32 @@ namespace AGR {
 			}
 
 		}
-		/*raysToLights.resize(raysAm);
+		raysToLights.resize(raysAm);
 		lengthsFromLights.resize(raysAm);
 		occlusionFlags.resize(raysAm);
-		m_bvh->PacketCheckOcclusions(raysToLights, lengthsFromLights, occlusionFlags);
+		m_bvh.PacketCheckOcclusions(raysToLights, lengthsFromLights, occlusionFlags);
 
 		for (int i = 0; i < raysAm; ++i) {
 			if (!occlusionFlags[i]) {
-				Intersection& hit = intersections[hitPtForRays[i]];
-				const Material *m = hit.p_object->getMaterial();
+				Ray& ray = rays[hitPtForRays[i]];
+				glm::vec3& normal = normals[hitPtForRays[i]];
+				const Material *m = intersections[hitPtForRays[i]].p_object->getMaterial();
 				float diffuseScaler =
-					glm::clamp(glm::dot(hit.normal, raysToLights[i].direction), 0.0f, 1.0f);
-				*hit.ray.pixel +=
-					hit.ray.energy * diffuseScaler * m->diffuseIntensity *
+					glm::clamp(glm::dot(normal, raysToLights[i].direction), 0.0f, 1.0f);
+				*ray.pixel +=
+					ray.energy * diffuseScaler * m->diffuseIntensity *
 					raysToLights[i].energy * surfaceColors[hitPtForRays[i]];
 				if (m->specularIntensity > FLT_EPSILON) {
 					glm::vec3 reflected =
-						2 * glm::dot(hit.normal, raysToLights[i].direction) * hit.normal
+						2 * glm::dot(normal, raysToLights[i].direction) * normal
 						- raysToLights[i].direction;
 					float specularScaler =
-						glm::clamp(glm::dot(reflected, -hit.ray.direction), 0.0f, 1.0f);
-					*hit.ray.pixel += hit.ray.energy *  raysToLights[i].energy *
+						glm::clamp(glm::dot(reflected, -ray.direction), 0.0f, 1.0f);
+					*ray.pixel += ray.energy *  raysToLights[i].energy *
 						glm::pow(specularScaler, m->shininess) * m->specularIntensity;
 				}
 			}
-		}*/
+		}
 	}
 
 	void Renderer::produceSecondaryRays(Ray& r, Intersection& hit, glm::vec3& normal,

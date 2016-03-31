@@ -31,7 +31,6 @@
     <ClCompile Include="raytracer\samplers\CheckboardSampler.cpp" />
     <ClCompile Include="raytracer\samplers\ImageSampler.cpp" />
     <ClCompile Include="raytracer\tiny_obj_loader.cc" />
-    <ClCompile Include="raytracer\util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="raytracer\AABB.h" />

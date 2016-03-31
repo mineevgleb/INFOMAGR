@@ -17,7 +17,8 @@ struct Ray_CL
 struct IntersectRequest_CL
 {
 	int rayNum;
-	int nodeNum;
+	int nodeLeft;
+	int nodeRight;
 };
 
 union Intersection_CL

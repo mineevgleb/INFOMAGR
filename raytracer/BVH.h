@@ -1,24 +1,18 @@
 #pragma once
-#include <CL/cl.hpp>
 #include <vector>
 #include "renederables/Primitive.h"
 #include "AABB.h"
-#include "gpu/opencl_structs.h"
 
 namespace AGR
 {
 	class BVH
 	{
 	public:
-		BVH(cl::Context *context, cl::Device *deviceToUse);
-		~BVH();
-		void constructLinear(std::vector<Primitive *>& primitives);
-		void constructAgglomerative(std::vector<Primitive *>& primitives);
-		bool Traverse(Ray& ray, Intersection& intersect);
+		void construct(std::vector<Primitive *>& primitives);
+		bool Traverse(Ray& ray, Intersection& intersect, int minLength);
 		void PacketTraverse(std::vector<Ray>& rays, std::vector<Intersection>& intersect);
 		void PacketCheckOcclusions(std::vector<Ray>& rays, 
 			std::vector<float>& lengths, std::vector<bool>& occlusionFlags);
-		void PacketTraverseSlow(std::vector<Ray>& rays, std::vector<Intersection>& intersect);
 	private:
 		struct Node
 		{
@@ -27,29 +21,40 @@ namespace AGR
 			int right;
 			int count;
 			int parent;
+			bool isLeaf;
 		};
+
+		struct RaySIMD
+		{
+			__m128 origx4;
+			__m128 origy4;
+			__m128 origz4;
+			__m128 invdirx4;
+			__m128 invdiry4;
+			__m128 invdirz4;
+		};
+
+		struct QuadNode
+		{
+			union { __m128 minx4; float minx[4]; };
+			union { __m128 miny4; float miny[4]; };
+			union { __m128 minz4; float minz[4]; };
+			union { __m128 maxx4; float maxx[4]; };
+			union { __m128 maxy4; float maxy[4]; };
+			union { __m128 maxz4; float maxz[4]; };
+			int child[4];
+			bool isLeaf[4];
+			__m128 intersect(RaySIMD& r, __m128& dist) const;
+		};
+
 		AABB getSurroundAABB(Primitive** primitives, size_t size) const;
 		size_t findSplit(Primitive** primitives, size_t size);
-		void Subdivide(int nodeNum, Primitive** primitives, int first);
-		void calcAABB(int nodeNum);
-		bool collapseSomeNodes(int nodeNum);
-		int findFirstIndex(int nodeNum);
 		::uint64_t expandBits(::uint64_t v) const;
 		::uint64_t CalcMortonCode(glm::vec3& pt, glm::vec3& min, glm::vec3& max) const;
 		void sortPrimitivesByMortonCodes();
-		float calcSAHvalue(int nodeNum);
-		float calcSAHvalueCollapsed(int nodeNum);
-		void calcIntercestionsCPU(std::vector<Ray> &rays, 
-			std::vector<IntersectRequest_CL> &requests, std::vector<Intersection_CL> &results);
-		bool Traverse(Ray& ray, Intersection& intersect, int nodeNum);
-		void intersectWithPrimitives(int nodeNum, Ray& r, Intersection& hit);
-		void composeTreelet(int nodeNum, int* leafs, int* childpairs);
-		void reshapeTreelet(int nodeNum, const int* leafs, const int* childpairs);
-		const int* executeReshape(::uint32_t curPartition, const ::uint32_t *bestPartitions, 
-			const Node *leafs, const int *childpairs, const AABB* bounds, const int* primitivescounts,
-			const bool* leafFlags);
-		void improveBVH(int nodeNum);
-		void fillGPUNodes();
+		bool Traverse(Ray& ray, RaySIMD& rsimd, Intersection& intersect, QuadNode *node, int minLength);
+		void buildQuadTree(QuadNode* parent, Node **children);
+		void formQuadNode(Node *parent, Node **children);
 
 		struct NodePair
 		{
@@ -67,24 +72,9 @@ namespace AGR
 
 		std::vector<Primitive *> m_primitives;
 		std::vector<Node> m_nodes;
-		std::vector<bool> m_leafFlags;
-		std::vector<float> m_SAHcache;
-		int m_nodesCount;
-		std::vector<std::vector<unsigned int>> m_setsDescriptions;
-
-		std::vector<AABB_CL> m_boundsBuf;
-		std::vector<Ray_CL> m_raysBuf;
-
-		cl::Program *m_bvhProgram;
-		cl::Context *m_context;
-		cl::CommandQueue *m_cmdqueue;
-		cl::Buffer *m_bvhBufCL = nullptr;
-		cl::Buffer *m_raysBufCL = nullptr;
-		cl::Buffer *m_hitsBufCL = nullptr;
-		cl::Buffer *m_restoreBufCL = nullptr;
-		cl::Buffer *m_hitsAmBufCL = nullptr;
-		size_t m_bvhbufSize = 0;
-		size_t m_raysBufCLSize = 0;
+		std::vector<QuadNode> m_quadNodes;
+		int m_quadNodesCount = 0;
+		int m_nodesCount = 0;
 
 		static const size_t TREELET_SIZE = 7;
 		static const size_t CLUSTER_SIZE = 20;
