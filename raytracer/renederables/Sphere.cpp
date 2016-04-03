@@ -42,9 +42,7 @@ namespace AGR {
 	{
 		glm::vec3 hitPt = r.direction * dist + r.origin;
 		if (m_material->isTexCoordRequired()) {
-			hitPt -= m_position;
-			hitPt /= m_radius;
-			glm::vec4 rotatedCoord = glm::vec4(hitPt, 1);
+			glm::vec4 rotatedCoord = glm::vec4((hitPt - m_position) / m_radius, 1);
 			rotatedCoord = m_rotationMatrix * rotatedCoord;
 			texCoord.x = 0.5f + glm::atan(-rotatedCoord.z, -rotatedCoord.x) / (2 * M_PI);
 			texCoord.y = 0.5f - glm::asin(-rotatedCoord.y) / M_PI;

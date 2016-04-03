@@ -1,6 +1,6 @@
 #pragma once
-#include "raytracer\Renderer.h"
-#include "raytracer\renederables\Sphere.h"
+#include "raytracer\Raytracer.h"
+#include "raytracer/Pathtracer.h"
 
 namespace Tmpl8 {
 
@@ -24,7 +24,7 @@ private:
 	std::vector<AGR::Sampler *> s;
 	std::vector<AGR::Light *> l;
 	AGR::Camera *m_cam;
-	AGR::Renderer *m_scene;
+	AGR::Pathtracer *m_scene;
 	glm::vec2 m_mousePos;
 };
 

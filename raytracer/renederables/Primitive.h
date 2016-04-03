@@ -5,7 +5,7 @@
 
 namespace AGR {
 	class Primitive {
-	friend class Renderer;
+	friend class Raytracer;
 	friend class BVH;
 	public:
 		explicit Primitive(Material &m) :

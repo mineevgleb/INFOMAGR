@@ -1,10 +1,6 @@
 #include "BVH.h"
 #include "util.h"
-#include <fstream>
 #include <ppl.h>
-#include <complex>
-#include <chrono>
-#include <thread>
 
 namespace AGR
 {
@@ -18,10 +14,9 @@ namespace AGR
 		std::vector<NodePair> nodes(m_primitives.size());
 		for (int i = 0; i < m_primitives.size(); ++i) {
 			nodes[i] = { i + 1, nullptr, FLT_MAX };
-			m_nodes[m_nodesCount].leftFirst = i;
+			m_nodes[m_nodesCount].primitiveNum = i;
 			m_nodes[m_nodesCount].bounds = m_primitives[i]->getBoundingBox();
-			m_nodes[m_nodesCount].count = 1;
-			m_nodes[m_nodesCount].isLeaf = true;
+			m_nodes[m_nodesCount].isLeaf |= Node::LEAF_FLAG;
 			++m_nodesCount;
 		}
 		int newSize = BuildTreeAgglomerative(&nodes[0], static_cast<int>(m_primitives.size()));
@@ -35,8 +30,6 @@ namespace AGR
 		}
 		combineClusters(&nodes[0], newSize, 1);
 		m_nodes[0] = m_nodes[--m_nodesCount];
-		m_nodes[m_nodes[0].leftFirst].parent = 0;
-		m_nodes[m_nodes[0].right].parent = 0;
 		m_quadNodes.resize(m_nodes.size());
 		m_quadNodesCount = 1;
 		Node *initialChildren[4];
@@ -44,17 +37,18 @@ namespace AGR
 		buildQuadTree(&m_quadNodes[0], initialChildren);
 	}
 
-	bool BVH::Traverse(Ray& ray, Intersection& intersect, int minLength)
+	bool BVH::Traverse(Ray& ray, Intersection& intersect, float minLength)
 	{
-		ray.invDirection = 1.0f / ray.direction;
+		intersect.ray_length = -1.0f;
+		glm::vec3 invDirection = 1.0f / ray.direction;
 		float dist;
-		if (!m_nodes[0].bounds.intersect(ray, dist)) {
+		if (!m_nodes[0].bounds.intersect(ray, dist, invDirection)) {
 			return false;
 		}
 		RaySIMD rsimd;
-		rsimd.invdirx4 = _mm_load1_ps(&ray.invDirection.x);
-		rsimd.invdiry4 = _mm_load1_ps(&ray.invDirection.y);
-		rsimd.invdirz4 = _mm_load1_ps(&ray.invDirection.z);
+		rsimd.invdirx4 = _mm_load1_ps(&invDirection.x);
+		rsimd.invdiry4 = _mm_load1_ps(&invDirection.y);
+		rsimd.invdirz4 = _mm_load1_ps(&invDirection.z);
 		rsimd.origx4 = _mm_load1_ps(&ray.origin.x);
 		rsimd.origy4 = _mm_load1_ps(&ray.origin.y);
 		rsimd.origz4 = _mm_load1_ps(&ray.origin.z);
@@ -85,14 +79,13 @@ namespace AGR
 	void BVH::PacketTraverse(std::vector<Ray>& rays, std::vector<Intersection>& intersect)
 	{
 		intersect.resize(rays.size());
-		const int chunksAm = 32;
+		const int chunksAm = 64;
 		concurrency::parallel_for(0, chunksAm, 1,
 			[this, &intersect, &rays, &chunksAm](int iter) {
 			int from = ((rays.size() / chunksAm) + 1) * iter;
 			int to = ((rays.size() / chunksAm) + 1) * (iter + 1);
 			if (to > rays.size()) to = rays.size();
 			for (int i = from; i < to; ++i) {
-				intersect[i].ray_length = -1;
 				Traverse(rays[i], intersect[i], -1.0f);
 			}
 		});
@@ -204,7 +197,7 @@ namespace AGR
 			[](Primitive *a, Primitive *b)->bool {return a->m_mortonCode < b->m_mortonCode;});
 	}
 
-	bool BVH::Traverse(Ray& ray, RaySIMD& rsimd, Intersection& intersect, QuadNode *node, int minLength)
+	bool BVH::Traverse(Ray& ray, RaySIMD& rsimd, Intersection& intersect, QuadNode *node, float minLength)
 	{
 		union
 		{
@@ -220,8 +213,8 @@ namespace AGR
 		bool wasHit = false;
 		for (int i = 0; i < 4; ++i) {
 			if (intersectFlags[i] && (intersect.ray_length < 0 || dist[i] < intersect.ray_length)) {
-				if (node->isLeaf[i]) {
-					Primitive* obj = m_primitives[node->child[i]];
+				if (node->isLeaf[i] & QuadNode::LEAF_FLAG) {
+					Primitive* obj = m_primitives[node->child[i] & (~QuadNode::LEAF_FLAG)];
 					float rayLen = obj->intersect(ray);
 					if (rayLen > 0) {
 						if (intersect.ray_length < 0 || rayLen < intersect.ray_length) {
@@ -231,9 +224,10 @@ namespace AGR
 						}
 					}
 				} else {
-					wasHit |= Traverse(ray, rsimd, intersect, &m_quadNodes[node->child[i]], minLength);
+					wasHit |= Traverse(ray, rsimd, intersect, 
+						&m_quadNodes[node->child[i] & (~QuadNode::LEAF_FLAG)], minLength);
 				}
-				if (intersect.ray_length > 0 && intersect.ray_length < minLength) return true;
+				if (intersect.ray_length > 0.0f && intersect.ray_length < minLength) return true;
 			}
 		}
 		return wasHit;
@@ -252,15 +246,15 @@ namespace AGR
 				parent->maxx[i] = maxpt.x;
 				parent->maxy[i] = maxpt.y;
 				parent->maxz[i] = maxpt.z;
-				if (children[i]->isLeaf) {
-					parent->child[i] = children[i]->leftFirst;
+				if (children[i]->isLeaf & Node::LEAF_FLAG) {
+					parent->child[i] = children[i]->primitiveNum;
 				} else {
 					parent->child[i] = m_quadNodesCount;
 					Node *newChildren[4];
 					formQuadNode(children[i], newChildren);
 					buildQuadTree(&m_quadNodes[m_quadNodesCount++], newChildren);
 				}
-				parent->isLeaf[i] = children[i]->isLeaf;
+				parent->isLeaf[i] |= children[i]->isLeaf & Node::LEAF_FLAG;
 			} 
 		}
 	}
@@ -269,16 +263,16 @@ namespace AGR
 	{
 		memset(children, 0, sizeof(children[0]) * 4);
 		int curAm = 2;
-		children[0] = &m_nodes[parent->leftFirst];
+		children[0] = &m_nodes[parent->left];
 		children[1] = &m_nodes[parent->right];
 		bool modified = false;
 		do {
 			modified = false;
 			for (int i = 0; i < curAm && curAm < 4; ++i) {
-				if (!children[i]->isLeaf) {
+				if (!(children[i]->isLeaf & Node::LEAF_FLAG)) {
 					modified = true;
 					children[curAm++] = &m_nodes[children[i]->right];
-					children[i] = &m_nodes[children[i]->leftFirst];
+					children[i] = &m_nodes[children[i]->left];
 				}
 			}
 		} while (modified);
@@ -299,7 +293,7 @@ namespace AGR
 			}
 			return clusterSize;
 		}
-		int firstPrimitiveIdx = m_nodes[nodesArr->nodeNum].leftFirst;
+		int firstPrimitiveIdx = m_nodes[nodesArr->nodeNum].primitiveNum;
 		size_t split = findSplit(&m_primitives[firstPrimitiveIdx], size);
 		int newSize = BuildTreeAgglomerative(nodesArr, split);
 		newSize += BuildTreeAgglomerative(&nodesArr[split], size - split);
@@ -328,16 +322,10 @@ namespace AGR
 					bestPair = &nodesArr[i];
 				}
 			}
-			m_nodes[m_nodesCount].leftFirst = bestPair->nodeNum;
+			m_nodes[m_nodesCount].left = bestPair->nodeNum;
 			m_nodes[m_nodesCount].right = bestPair->closestNode->nodeNum;
 			m_nodes[m_nodesCount].bounds = m_nodes[bestPair->nodeNum].bounds;
 			m_nodes[m_nodesCount].bounds.extend(m_nodes[bestPair->closestNode->nodeNum].bounds);
-			m_nodes[m_nodesCount].count = m_nodes[m_nodes[m_nodesCount].leftFirst].count;
-			m_nodes[m_nodesCount].count += m_nodes[m_nodes[m_nodesCount].right].count;
-			m_nodes[m_nodesCount].parent = -1;
-			m_nodes[bestPair->nodeNum].parent = m_nodesCount;
-			m_nodes[bestPair->closestNode->nodeNum].parent = m_nodesCount;
-			m_nodes[m_nodesCount].isLeaf = false;
 			NodePair* deleted1 = bestPair->closestNode;
 			NodePair* deleted2 = bestPair;
 			*bestPair->closestNode = { -1, nullptr, FLT_MAX };

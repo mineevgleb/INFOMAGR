@@ -9,7 +9,7 @@ namespace AGR
 	{
 	public:
 		void construct(std::vector<Primitive *>& primitives);
-		bool Traverse(Ray& ray, Intersection& intersect, int minLength);
+		bool Traverse(Ray& ray, Intersection& intersect, float minLength);
 		void PacketTraverse(std::vector<Ray>& rays, std::vector<Intersection>& intersect);
 		void PacketCheckOcclusions(std::vector<Ray>& rays, 
 			std::vector<float>& lengths, std::vector<bool>& occlusionFlags);
@@ -17,11 +17,9 @@ namespace AGR
 		struct Node
 		{
 			AABB bounds;
-			int leftFirst;
-			int right;
-			int count;
-			int parent;
-			bool isLeaf;
+			union { int left; int primitiveNum; };
+			union { int right; int isLeaf; };
+			const static unsigned int LEAF_FLAG = 0x80000000;
 		};
 
 		struct RaySIMD
@@ -42,8 +40,8 @@ namespace AGR
 			union { __m128 maxx4; float maxx[4]; };
 			union { __m128 maxy4; float maxy[4]; };
 			union { __m128 maxz4; float maxz[4]; };
-			int child[4];
-			bool isLeaf[4];
+			union { int child[4]; int isLeaf[4]; };
+			const static unsigned int LEAF_FLAG = 0x80000000;
 			__m128 intersect(RaySIMD& r, __m128& dist) const;
 		};
 
@@ -52,7 +50,7 @@ namespace AGR
 		::uint64_t expandBits(::uint64_t v) const;
 		::uint64_t CalcMortonCode(glm::vec3& pt, glm::vec3& min, glm::vec3& max) const;
 		void sortPrimitivesByMortonCodes();
-		bool Traverse(Ray& ray, RaySIMD& rsimd, Intersection& intersect, QuadNode *node, int minLength);
+		bool Traverse(Ray& ray, RaySIMD& rsimd, Intersection& intersect, QuadNode *node, float minLength);
 		void buildQuadTree(QuadNode* parent, Node **children);
 		void formQuadNode(Node *parent, Node **children);
 

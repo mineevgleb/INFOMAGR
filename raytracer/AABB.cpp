@@ -14,10 +14,10 @@ namespace AGR
 		}
 	}
 
-	bool AABB::intersect(const Ray& r, float &dist) const
+	bool AABB::intersect(const Ray& r, float &dist, glm::vec3& invDir) const
 	{
-		glm::vec3 t1 = (m_minPt - r.origin) * r.invDirection;
-		glm::vec3 t2 = (m_maxPt - r.origin) * r.invDirection;
+		glm::vec3 t1 = (m_minPt - r.origin) * invDir;
+		glm::vec3 t2 = (m_maxPt - r.origin) * invDir;
 		bool cmp = t1.x < t2.x;
 		float xmin = t2.x + (t1.x - t2.x) * cmp;
 		float xmax = t1.x + t2.x - xmin;

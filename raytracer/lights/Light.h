@@ -10,7 +10,7 @@ namespace AGR{
 
 	class Light
 	{
-	friend class Renderer;
+	friend class Raytracer;
 	public:
 		Light(): m_idx(-1){}
 		virtual void getDirectionToTheLight(const glm::vec3 &pt, LightRay& dir) const = 0;
