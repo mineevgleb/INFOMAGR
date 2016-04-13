@@ -16,6 +16,7 @@ namespace AGR {
 			glm::vec2& texCoord, glm::vec3& normal) const = 0;
 		const AABB& getBoundingBox() const { return m_aabb; }
 		const Material* getMaterial() const { return m_material; }
+		virtual float getArea() = 0;
 	protected:
 		Material *m_material;
 		AABB m_aabb;

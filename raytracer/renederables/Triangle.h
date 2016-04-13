@@ -46,6 +46,7 @@ namespace AGR {
 		const glm::vec3& getFaceNormal() const;
 
 		void commitTransformations();
+		float getArea() override;
 	private:
 		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out, bool limit) const;
 		Vertex m_vert[3];
@@ -55,6 +56,7 @@ namespace AGR {
 		bool m_useTextureCoords;
 		bool m_useVertNormals;
 		bool m_limit;
+		float m_area;
 
 		//for barycentric coord
 		float m_d00, m_d01, m_d11, m_invdenom;

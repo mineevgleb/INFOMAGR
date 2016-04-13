@@ -94,6 +94,15 @@ namespace AGR
 		m_scale = s;
 	}
 
+	AABB Mesh::getAABB()
+	{
+		AABB result = m_triangles[0]->getBoundingBox();
+		for (int i = 1; i < m_triangles.size(); ++i) {
+			result.extend(m_triangles[0]->getBoundingBox());
+		}
+		return result;
+	}
+
 	void Mesh::release()
 	{
 		for (int i = 0; i < m_triangles.size(); ++i)

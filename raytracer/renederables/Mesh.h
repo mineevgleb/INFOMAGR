@@ -23,6 +23,7 @@ namespace AGR {
 		void setPosition(const glm::vec3& p);
 		void setRotation(const glm::vec3& r);
 		void setScale(const glm::vec3& s);
+		AABB getAABB();
 		void commitTransformations();
 		void release();
 	private:

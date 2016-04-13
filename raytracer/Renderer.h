@@ -10,7 +10,8 @@ namespace AGR {
 
 	class Renderer {
 	public:
-		Renderer(const Camera &c, const glm::vec3& backgroundColor, const glm::vec2& resolution);
+		Renderer(const Camera &c, const glm::vec3& backgroundColor, const glm::vec2& resolution,
+			bool useAntialiasing);
 		virtual ~Renderer(){};
 		void addRenderable(Primitive &r);
 		void removeRenderable(Primitive &r);
@@ -39,6 +40,7 @@ namespace AGR {
 		const Camera *m_camera;
 		glm::vec3 m_backgroundColor;
 		BVH m_bvh;
+		bool m_useAntialiasing;
 		const float shiftValue = FLT_EPSILON * 500;
 	};
 

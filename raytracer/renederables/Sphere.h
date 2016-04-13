@@ -22,6 +22,8 @@ namespace AGR {
 		void setRadius(float radius);
 
 		void commitTransformations();
+
+		float getArea() override;
 	private:
 		bool m_modified;
 		glm::vec3 m_position;

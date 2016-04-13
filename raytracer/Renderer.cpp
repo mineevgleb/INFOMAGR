@@ -1,12 +1,14 @@
 #include "Renderer.h"
+#include <random>
 
 namespace AGR {
 	Renderer::Renderer(const Camera& c, const glm::vec3& backgroundColor,
-		const glm::vec2 & resolution) : m_image(resolution.x * resolution.y),
+		const glm::vec2 & resolution, bool useAntialiasing) : m_image(resolution.x * resolution.y),
 		m_highpImage(resolution.x * resolution.y),
 		m_resolution(resolution),
 		m_camera(&c),
-		m_backgroundColor(backgroundColor)
+		m_backgroundColor(backgroundColor),
+		m_useAntialiasing(useAntialiasing)
 	{}
 
 	void Renderer::addRenderable(Primitive& r)
@@ -59,10 +61,20 @@ namespace AGR {
 		memset(&tmp_buf[0], 0, tmp_buf.size() * sizeof(tmp_buf[0]));
 		static std::vector<Ray> raysToIntersect;
 		raysToIntersect.resize(m_resolution.x * m_resolution.y);
+
+		glm::vec2 pixelSize(1.0f / (m_resolution.x - 1), 1.0f / (m_resolution.y - 1));
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::uniform_real_distribution<> dis0to1(0.0f, 1.0f);
+
 		for (size_t y = 0; y < m_resolution.y; ++y) {
 			for (size_t x = 0; x < resolution.x; ++x) {
 				glm::vec2 curPixel(static_cast<float>(x) / (m_resolution.x - 1),
 					static_cast<float>(y) / (m_resolution.y - 1));
+				if (m_useAntialiasing) {
+					curPixel.x += (dis0to1(gen) - 0.5f) * pixelSize.x;
+					curPixel.y += (dis0to1(gen) - 0.5f) * pixelSize.y;
+				}
 				m_camera->produceRay(curPixel, raysToIntersect[x + y * m_resolution.x]);
 				raysToIntersect[x + y * m_resolution.x].pixel = &tmp_buf[x + y * m_resolution.x];
 				raysToIntersect[x + y * m_resolution.x].surroundMaterial = nullptr;

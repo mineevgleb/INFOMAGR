@@ -14,17 +14,20 @@ AGR::Mesh *hum1;
 AGR::Mesh *hum2;
 AGR::Mesh *arm;
 AGR::Mesh *teap;
+
 void Game::Init()
 {
 	float aspectRatio = static_cast<float>(screen->GetWidth()) / screen->GetHeight();
 	m_cam = new AGR::Camera(aspectRatio, 80, glm::vec3(0, 1.5, -5));
 	s.push_back(new AGR::CheckboardSampler(glm::vec2(10, 5), glm::vec3(1, 1, 1), glm::vec3(0.5, 0.5, 0.5)));
-	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 1, 0.5)));
-	s.push_back(new AGR::ColorSampler(glm::vec3(1, 0.8, 1)));
-	s.push_back(new AGR::ImageSampler("earth.jpg"));
+	s.push_back(new AGR::ColorSampler(glm::vec3(1, 0.5, 0.5)));
+	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 0.5, 0.5)));
+	s.push_back(new AGR::ImageSampler("pier.jpg"));
+	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 0.5, 1.0)));
 	m.push_back(new AGR::Material);
 	//m[0]->specularIntensity = 1.0f;
 	m[0]->diffuseIntensity = 1.0f;
+	//m[0]->reflectionIntensity = 0.9f;
 	m[0]->glowIntensity = 0.0f;
 	//m[0]->reflectionIntensity = 1.0f;
 	//m[0]->reflectionColor = glm::vec3(1, 0.8, 1);
@@ -32,18 +35,23 @@ void Game::Init()
 	m.push_back(new AGR::Material);
 	m[1]->refractionIntensity = 1.0f;
 	m[1]->refractionCoeficient = 1.71f;
-	m[1]->innerColor = glm::vec3(0, 0, 0.5);
+	m[1]->innerColor = glm::vec3(0.5, 1.0, 0.5);
 	m[1]->reflectionIntensity = 0.0f;
-	m[1]->absorption = 1.01f;
+	m[1]->absorption = 1.3f;
 	m.push_back(new AGR::Material);
 	m[2]->texture = s[3];
-	m[2]->diffuseIntensity = 1.0f;
-	m[2]->glowIntensity = 0.1f;
+	//m[2]->diffuseIntensity = 1.0f;
+	m[2]->glowIntensity = 1.0f;
 	m.push_back(new AGR::Material);
-	m[3]->texture = s[2];
-	m[3]->glowIntensity = 0.8f;
+	m[3]->texture = s[1];
+	m[3]->glowIntensity = 5.5f;
 	m[3]->diffuseIntensity = 0.2f;
-	r.push_back(new AGR::Sphere(*m[2], glm::vec3(-3, -0.5, 14.3), 40, glm::vec3()));
+	m.push_back(new AGR::Material);
+	m[4]->texture = s[4];
+	m[4]->reflectionIntensity = 1.0;
+	r.push_back(new AGR::Sphere(*m[2], glm::vec3(), 400, glm::vec3(0, 180 ,0)));
+	r.push_back(new AGR::Sphere(*m[1], glm::vec3(2, 0.5, 2), 0.5, glm::vec3(0, 180, 0)));
+	r.push_back(new AGR::Sphere(*m[4], glm::vec3(-2, 0.5, 2), 0.5, glm::vec3(0, 180, 0)));
 	r.push_back(new AGR::Triangle(
 		AGR::Vertex(glm::vec3(0, 0, 40), glm::vec2(0, 0)),
 		AGR::Vertex(glm::vec3(10, 0, 50), glm::vec2(0, 1)),
@@ -58,19 +66,21 @@ void Game::Init()
 	hum2 = new AGR::Mesh(*m[3]);
 	hum2->load("cube.obj", AGR::CONSISTENT);
 	//hum2->setRotation(glm::vec3(0, -90, 0));
-	//hum2->setScale(glm::vec3(0.15f));
-	//hum2->setPosition(glm::vec3(2, 0, 0));
+	hum2->setScale(glm::vec3(0.5f));
+	hum2->setPosition(glm::vec3(2.1, 0.4, 2.0));
 	hum2->commitTransformations();
 	arm = new AGR::Mesh(*m[0]);
 	arm->load("bunny.obj", AGR::CONSISTENT);
-	arm->setPosition(glm::vec3(0, 0, 2));
-	//arm->setScale(glm::vec3(0.15));
+	arm->setPosition(glm::vec3(0, 0, 0.5));
+	arm->setScale(glm::vec3(0.5));
+	arm->setRotation(glm::vec3(0, 0, 0));
 	arm->commitTransformations();
 
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Pathtracer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
 	m_scene->addRenderable(*r[0]);
+	m_scene->addRenderable(*r[1]);m_scene->addRenderable(*r[2]);
 	m_scene->addRenderable(*hum1);
 	m_scene->addRenderable(*hum2);
 	m_scene->addRenderable(*arm);

@@ -93,4 +93,9 @@ namespace AGR {
 		glm::vec3 maxPt = m_position + glm::vec3(m_radius);
 		m_aabb = AABB(minPt, maxPt);
 	}
+
+	float Sphere::getArea()
+	{
+		return 4 * M_PI * m_radius * m_radius;
+	}
 }

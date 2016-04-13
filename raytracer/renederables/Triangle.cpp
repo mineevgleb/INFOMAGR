@@ -137,5 +137,11 @@ namespace AGR
 		minPt -= glm::vec3(0.01f);
 		maxPt += glm::vec3(0.01f);
 		m_aabb = AABB(minPt, maxPt);
+		m_area = glm::length(m_v0v1) * glm::length(m_v0v2) * glm::length(crossproduct) * 0.5;
+	}
+
+	float Triangle::getArea()
+	{
+		return m_area;
 	}
 }
