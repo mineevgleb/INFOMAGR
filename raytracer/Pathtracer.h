@@ -6,9 +6,10 @@ namespace AGR {
 	{
 	public:
 		Pathtracer(const Camera &c, Sampler *skydomeTex, const glm::vec2& resolution);
+		void SceneUpdated() { m_isSceneUpdated = true; }
 	private:
 		void Sample(Ray &r, int d, bool collectDirect);
-		glm::vec3 SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf);
+		glm::vec3 SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf, float *outPdf);
 		void traceRays(std::vector<Ray> &rays) override;
 		void combineImg(std::vector<glm::vec3> &buf) override;
 		void updateLightsProbs();
@@ -18,5 +19,6 @@ namespace AGR {
 		const int MAX_PATH_LEN = 128;
 		std::vector<Primitive *> m_lightsForSampling;
 		std::vector<float> m_lightProbs;
+		bool m_isSceneUpdated;
 	};
 }

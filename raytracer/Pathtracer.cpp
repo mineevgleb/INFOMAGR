@@ -6,7 +6,9 @@
 namespace AGR
 {
 	Pathtracer::Pathtracer(const Camera& c, Sampler *skydomeTex,
-		const glm::vec2& resolution) : Renderer(c, skydomeTex, resolution, true)
+		const glm::vec2& resolution) :
+		Renderer(c, skydomeTex, resolution, true),
+		m_isSceneUpdated(true)
 	{}
 
 	void Pathtracer::Sample(Ray& r, int d, bool collectDirect)
@@ -32,8 +34,8 @@ namespace AGR
 			r.origin = glm::vec3();
 			float dist = m_skydome->intersect(r);
 			glm::vec2 texcoord;
-			glm::vec3 normal;
-			m_skydome->getTexCoordAndNormal(r, dist, texcoord, normal);
+			glm::vec3 n;
+			m_skydome->getTexCoordAndNormal(r, dist, texcoord, n);
 			glm::vec3 color;
 			if (collectDirect)
 				m_skydome->getMaterial()->texture->getColor(texcoord, color);
@@ -79,9 +81,11 @@ namespace AGR
 			next.pixel = r.pixel;
 			next.energy = r.energy * brdf * M_PI;
 			next.surroundMaterial = r.surroundMaterial;
-			*r.pixel += SampleDirect(next.origin, normal, brdf) * r.energy;
-			if (collectDirect)
-				*r.pixel += color * m->glowIntensity * r.energy;
+			float lPdf;
+			glm::vec3 directColor = SampleDirect(next.origin, normal, brdf, &lPdf);
+			float brdfPdf = glm::dot(next.direction, normal) / M_PI;
+			*r.pixel += directColor * r.energy * (lPdf / (lPdf + brdfPdf));
+			*r.pixel += color * m->glowIntensity * r.energy * (brdfPdf / (lPdf + brdfPdf));
 			Sample(next, d + 1, false);
 			return;
 		}
@@ -127,12 +131,13 @@ namespace AGR
 			Sample(next, d + 1, true);
 			return;
 		}
-		if (collectDirect)
-			*r.pixel += color * m->glowIntensity * r.energy;
+		*r.pixel += color * m->glowIntensity * r.energy;
 	}
 
-	glm::vec3 Pathtracer::SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf)
+	glm::vec3 Pathtracer::SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf, float *outPdf)
 	{
+		if (m_lightsForSampling.size() == 0) return glm::vec3();
+		const int attempts = 5;
 		static std::random_device rd;
 		static std::mt19937 gen(rd());
 		std::uniform_int_distribution<> dist(0, m_lightsForSampling.size() - 1);
@@ -141,6 +146,8 @@ namespace AGR
 		glm::vec3 ptOnLight = light->getRandomPoint();
 		Ray r;
 		float distToLight = glm::distance(ptOnLight, pt);
+
+
 		r.origin = pt;
 		r.direction = (ptOnLight - pt) / distToLight;
 		Intersection hit;
@@ -155,7 +162,7 @@ namespace AGR
 				m->texture->getColor(texCoord, col);
 				glm::vec3 color = m->glowIntensity * col * brdf * solidAngle * glm::dot(r.direction, normal) /
 					(m_lightProbs[lightIdx] / m_lightProbs.size());
-
+				*outPdf = 1.0f / solidAngle;
 				return m->glowIntensity * col * brdf * solidAngle * glm::dot(r.direction, normal) /
 					(m_lightProbs[lightIdx] / m_lightProbs.size());
 			}
@@ -165,7 +172,11 @@ namespace AGR
 
 	void Pathtracer::traceRays(std::vector<Ray>& rays)
 	{
-		updateLightsProbs();
+		if (m_isSceneUpdated) {
+			m_bvh.construct(m_primitives);
+			updateLightsProbs();
+			m_isSceneUpdated = false;
+		}
 		concurrency::parallel_for(0, (int)rays.size(), 1, [this, &rays](int i) {
 		//for (int i = 0; i < rays.size(); ++i) {
 			Sample(rays[i], 0, true);
@@ -203,13 +214,14 @@ namespace AGR
 				if (prob > maxProb) maxProb = prob;
 			}
 		}
+		if (lights.size() == 0) return;
 		m_lightsForSampling.resize(0);
 		m_lightProbs.resize(0);
-		m_lightsForSampling.reserve(lights.size() * 10);
-		m_lightProbs.reserve(lights.size() * 10);
+		m_lightsForSampling.reserve(lights.size() * 200);
+		m_lightProbs.reserve(lights.size() * 200);
 		for (int i = 0; i < lights.size(); ++i) {
 			float probFrac = probs[i] / maxProb;
-			int slotsToOccupy = glm::ceil(probFrac * 10);
+			int slotsToOccupy = glm::ceil(probFrac * 200);
 			for (int j = 0; j < slotsToOccupy; ++j) {
 				m_lightsForSampling.push_back(lights[i]);
 				m_lightProbs.push_back(slotsToOccupy);

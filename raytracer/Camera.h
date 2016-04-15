@@ -27,6 +27,8 @@ namespace AGR {
 		const glm::vec3& getRotation() const;
 		void setRotation(const glm::vec3& rotation);
 
+		void setLensParams(float focalDist, float apertureSize);
+
 	private:
 		void updateVectors();
 
@@ -38,6 +40,9 @@ namespace AGR {
 		glm::vec3 m_frontVec;
 		glm::vec3 m_rightVec;
 		glm::vec3 m_upVec;
+
+		float m_focalDist = 1.0f;
+		float m_apertureSize = 0.0f;
 	};
 
 }

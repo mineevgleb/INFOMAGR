@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include "util.h"
+#include <random>
 
 namespace AGR {
 	Camera::Camera(float aspectRatio, float horFOV, const glm::vec3& position, const glm::vec3& rotation):
@@ -11,9 +12,20 @@ namespace AGR {
 
 	void Camera::produceRay(const glm::vec2 position, Ray & out) const
 	{
-		out.origin = m_position;
-		out.direction = glm::normalize(m_frontVec + 
-			m_rightVec * (position.x - 0.5f) - m_upVec * (position.y - 0.5f));
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::uniform_real_distribution<> distr;
+		float r = glm::sqrt(distr(gen));
+		float angle = distr(gen) * 2 * M_PI;
+		glm::vec2 offset = glm::vec2(r * glm::cos(angle), r * glm::sin(angle));
+		offset = offset * m_apertureSize;
+		glm::vec3 globalOffset = offset.x * m_rightVec * 2.0f + offset.y * m_upVec * 2.0f;
+		out.origin = m_position + globalOffset;
+		out.direction = glm::normalize(m_frontVec * m_focalDist +
+			m_rightVec * (position.x - 0.5f) * m_focalDist
+			- m_upVec * (position.y - 0.5f) * m_focalDist - 
+			globalOffset);
+			
 	}
 
 	void Camera::lookAt(glm::vec3 point, float rollAngle)
@@ -67,13 +79,19 @@ namespace AGR {
 		updateVectors();
 	}
 
+	void Camera::setLensParams(float focalDist, float apertureSize)
+	{
+		m_focalDist = focalDist;
+		m_apertureSize = apertureSize;
+	}
+
 	void Camera::updateVectors()
 	{
 		glm::vec4 front(0, 0, 1, 1);
 		glm::vec4 right(0.5f, 0, 0, 1);
 		glm::vec4 up(0, 0.5f, 0, 1);
-		float camLen = (m_aspectRatio / 2) * glm::tan(m_horFov / 2);
-		glm::vec3 scale(m_aspectRatio, 1.0f, camLen);
+		float scaler = glm::tan(m_horFov / 2);
+		glm::vec3 scale(m_aspectRatio * scaler, scaler, 1.0f);
 		glm::mat4x4 transform;
 		transformMat(glm::vec3(), m_rotation, scale, transform);
 		front = transform * front;

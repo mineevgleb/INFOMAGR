@@ -59,7 +59,6 @@ namespace AGR {
 	void Renderer::render(const glm::uvec2 & resolution)
 	{
 		static std::vector<glm::vec3> tmp_buf(resolution.x * resolution.y);
-		m_bvh.construct(m_primitives);
 		if (resolution != m_resolution) {
 			m_image.resize(m_resolution.x * m_resolution.y);
 			m_highpImage.resize(m_resolution.x * m_resolution.y);
