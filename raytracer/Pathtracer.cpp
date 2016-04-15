@@ -5,20 +5,21 @@
 
 namespace AGR
 {
-	Pathtracer::Pathtracer(const Camera& c, const glm::vec3& backgroundColor, 
-		const glm::vec2& resolution) : Renderer(c, backgroundColor, resolution, true)
+	Pathtracer::Pathtracer(const Camera& c, Sampler *skydomeTex,
+		const glm::vec2& resolution) : Renderer(c, skydomeTex, resolution, true)
 	{}
 
-	void Pathtracer::Sample(Ray& r, int d)
+	void Pathtracer::Sample(Ray& r, int d, bool collectDirect)
 	{
 		static std::random_device rd;
 		static std::mt19937 gen(rd());
 		if (d > MIN_PATH_LEN) {
+			if (d > MAX_PATH_LEN) return;
 			std::uniform_real_distribution<> dis0to1(0.0f, 1.0f);
 			float probability = r.energy.x;
 			probability = r.energy.y > probability ? r.energy.y : probability;
 			probability = r.energy.z > probability ? r.energy.z : probability;
-			probability *= (1.0 - float(d) / 200);
+			probability *= (1.0f - float(d));
 			float randNum = dis0to1(gen);
 			if (randNum > probability)
 				return;
@@ -28,18 +29,38 @@ namespace AGR
 		glm::vec2 texCoord;
 		glm::vec3 normal;
 		if (!m_bvh.Traverse(r, hit, -1.0f)) {
+			r.origin = glm::vec3();
+			float dist = m_skydome->intersect(r);
+			glm::vec2 texcoord;
+			glm::vec3 normal;
+			m_skydome->getTexCoordAndNormal(r, dist, texcoord, normal);
+			glm::vec3 color;
+			if (collectDirect)
+				m_skydome->getMaterial()->texture->getColor(texcoord, color);
+			else 
+				m_skydome->getMaterial()->texture->getHDRColor(texcoord, color);
+			float maxComp = color.r > color.g && color.r != INFINITY ? color.r : color.g;
+			maxComp = maxComp > color.b && maxComp != INFINITY ? maxComp : color.b;
+			const float maxEdge = 64.0f;
+			if (maxComp == INFINITY) maxComp = maxEdge;
+			if (color.r == INFINITY || color.g == INFINITY || color.b == INFINITY) {
+				if (color.r == INFINITY) color.r = maxComp;
+				if (color.g == INFINITY) color.g = maxComp;
+				if (color.b == INFINITY) color.b = maxComp;
+			}
+			if (maxComp > maxEdge) color = color / maxComp * maxEdge;
 			if (r.surroundMaterial) {
-				*r.pixel += r.energy * r.surroundMaterial->innerColor;
+				*r.pixel += r.energy * r.surroundMaterial->innerColor * color;
 				return;
 			}
-			*r.pixel += m_backgroundColor * r.energy;
+			
+			*r.pixel += color * r.energy;
 			return;
 		}
 		if (r.surroundMaterial) {
 			const Material *m = r.surroundMaterial;
 			float remainedIntensity = glm::exp(-glm::log(m->absorption) * hit.ray_length);
-			*r.pixel += r.energy * (1.0f - remainedIntensity) * m->innerColor;
-			r.energy *= remainedIntensity;
+			r.energy -= r.energy * (1.0f - remainedIntensity) * (1.0f - m->innerColor);
 		}
 		const Material *m = hit.p_object->getMaterial();
 		hit.p_object->getTexCoordAndNormal(r, hit.ray_length, texCoord, normal);
@@ -51,13 +72,17 @@ namespace AGR
 		if (m->texture)
 			m->texture->getColor(texCoord, color);
 		if (materialType < m->diffuseIntensity) {
+			glm::vec3 brdf = color / M_PI;
 			Ray next;
 			next.origin = hit.ray_length * r.direction + r.origin + normal * shiftValue;
 			next.direction = diffuseReflection(normal);
 			next.pixel = r.pixel;
-			next.energy = r.energy * glm::dot(next.direction, normal) * color * 2.0f;
-			*r.pixel += color * m->glowIntensity * r.energy;
-			Sample(next, d + 1);
+			next.energy = r.energy * brdf * M_PI;
+			next.surroundMaterial = r.surroundMaterial;
+			*r.pixel += SampleDirect(next.origin, normal, brdf) * r.energy;
+			if (collectDirect)
+				*r.pixel += color * m->glowIntensity * r.energy;
+			Sample(next, d + 1, false);
 			return;
 		}
 		materialType -= m->diffuseIntensity;
@@ -70,7 +95,6 @@ namespace AGR
 			float refrCoef2 = r.surroundMaterial ? 1.0f : m->refractionCoeficient;
 			next.origin = hit.ray_length * r.direction + r.origin - normal * shiftValue;
 			if (calcRefractedRay(r.direction, normal, refrCoef1, refrCoef2, next.direction)) {
-				
 				float frenselRefl;
 				if (r.surroundMaterial) {
 					frenselRefl = calcReflectionComponent(next.direction,
@@ -85,7 +109,7 @@ namespace AGR
 				if (materialType < trueRefraction) {
 					next.energy = r.energy;
 					next.pixel = r.pixel;
-					Sample(next, d + 1);
+					Sample(next, d + 1, collectDirect);
 					return;
 				}
 			} else {
@@ -99,17 +123,52 @@ namespace AGR
 			calcReflectedRay(r.direction, normal, next.direction);
 			next.energy = r.energy * color;
 			next.pixel = r.pixel;
-			Sample(next, d + 1);
+			next.surroundMaterial = r.surroundMaterial;
+			Sample(next, d + 1, true);
 			return;
 		}
-		*r.pixel += color * m->glowIntensity * r.energy;
+		if (collectDirect)
+			*r.pixel += color * m->glowIntensity * r.energy;
+	}
+
+	glm::vec3 Pathtracer::SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf)
+	{
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::uniform_int_distribution<> dist(0, m_lightsForSampling.size() - 1);
+		int lightIdx = dist(gen);
+		Primitive *light = m_lightsForSampling[lightIdx];
+		glm::vec3 ptOnLight = light->getRandomPoint();
+		Ray r;
+		float distToLight = glm::distance(ptOnLight, pt);
+		r.origin = pt;
+		r.direction = (ptOnLight - pt) / distToLight;
+		Intersection hit;
+		glm::vec2 texCoord;
+		glm::vec3 lightNormal;
+		light->getTexCoordAndNormal(r, distToLight, texCoord, lightNormal);
+		if (glm::dot(normal, r.direction) > 0 && glm::dot(lightNormal, -r.direction) > 0) {
+			if (!m_bvh.Traverse(r, hit, distToLight - 1.0) || hit.p_object == light) {
+				float solidAngle = light->calcSolidAngle(pt);
+				const Material *m = light->getMaterial();
+				glm::vec3 col;
+				m->texture->getColor(texCoord, col);
+				glm::vec3 color = m->glowIntensity * col * brdf * solidAngle * glm::dot(r.direction, normal) /
+					(m_lightProbs[lightIdx] / m_lightProbs.size());
+
+				return m->glowIntensity * col * brdf * solidAngle * glm::dot(r.direction, normal) /
+					(m_lightProbs[lightIdx] / m_lightProbs.size());
+			}
+		}
+		return glm::vec3(0);
 	}
 
 	void Pathtracer::traceRays(std::vector<Ray>& rays)
 	{
+		updateLightsProbs();
 		concurrency::parallel_for(0, (int)rays.size(), 1, [this, &rays](int i) {
 		//for (int i = 0; i < rays.size(); ++i) {
-			Sample(rays[i], 0);
+			Sample(rays[i], 0, true);
 		});
 	}
 
@@ -117,11 +176,45 @@ namespace AGR
 	{
 		float divisor = 1.0f / (m_amountOfIterations + 1);
 		for (int i = 0; i < buf.size(); ++i) {
+			glm::vec3 asd = m_highpImage[i];
+			asd += glm::vec3();
 			m_highpImage[i] = m_highpImage[i] * 
 				static_cast<float>(m_amountOfIterations) + buf[i];
 			m_highpImage[i] *= divisor;
 		}
 		m_amountOfIterations++;
+	}
+
+	void Pathtracer::updateLightsProbs()
+	{
+		float maxProb = 0.0f;
+		static std::vector<Primitive *> lights;
+		static std::vector<float> probs;
+		lights.reserve(m_primitives.size());
+		lights.resize(0);
+		probs.reserve(m_primitives.size());
+		probs.resize(0);
+		for (int i = 0; i < m_primitives.size(); ++i) {
+			const Material *m = m_primitives[i]->getMaterial();
+			if (m->glowIntensity > 0.01) {
+				lights.push_back(m_primitives[i]);
+				float prob = m->glowIntensity * m_primitives[i]->getArea();
+				probs.push_back(prob);
+				if (prob > maxProb) maxProb = prob;
+			}
+		}
+		m_lightsForSampling.resize(0);
+		m_lightProbs.resize(0);
+		m_lightsForSampling.reserve(lights.size() * 10);
+		m_lightProbs.reserve(lights.size() * 10);
+		for (int i = 0; i < lights.size(); ++i) {
+			float probFrac = probs[i] / maxProb;
+			int slotsToOccupy = glm::ceil(probFrac * 10);
+			for (int j = 0; j < slotsToOccupy; ++j) {
+				m_lightsForSampling.push_back(lights[i]);
+				m_lightProbs.push_back(slotsToOccupy);
+			}
+		}
 	}
 
 	glm::vec3 Pathtracer::diffuseReflection(const glm::vec3& normal) const

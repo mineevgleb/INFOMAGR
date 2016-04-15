@@ -2,14 +2,22 @@
 #include <random>
 
 namespace AGR {
-	Renderer::Renderer(const Camera& c, const glm::vec3& backgroundColor,
+	Renderer::Renderer(const Camera& c, Sampler *skydomeTex,
 		const glm::vec2 & resolution, bool useAntialiasing) : m_image(resolution.x * resolution.y),
 		m_highpImage(resolution.x * resolution.y),
 		m_resolution(resolution),
 		m_camera(&c),
-		m_backgroundColor(backgroundColor),
 		m_useAntialiasing(useAntialiasing)
-	{}
+	{
+		m_skyMat.glowIntensity = 1.0f;
+		m_skyMat.texture = skydomeTex;
+		m_skydome = new Sphere(m_skyMat);
+	}
+
+	Renderer::~Renderer()
+	{
+		delete m_skydome;
+	}
 
 	void Renderer::addRenderable(Primitive& r)
 	{
@@ -83,6 +91,12 @@ namespace AGR {
 		}
 		traceRays(raysToIntersect);
 		combineImg(tmp_buf);
+	}
+
+	void Renderer::setSkydomeAngle(float angle)
+	{
+		m_skydome->setRotation(glm::vec3(0, angle, 0));
+		m_skydome->commitTransformations();
 	}
 
 	void Renderer::testRay(int x, int y)

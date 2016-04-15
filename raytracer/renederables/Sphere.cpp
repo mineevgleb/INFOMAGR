@@ -1,5 +1,6 @@
 #include "Sphere.h"
 #include "../util.h"
+#include <random>
 
 namespace AGR {
 	Sphere::Sphere(Material& m, const glm::vec3& position,
@@ -94,8 +95,27 @@ namespace AGR {
 		m_aabb = AABB(minPt, maxPt);
 	}
 
+	glm::vec3 Sphere::getRandomPoint()
+	{
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::normal_distribution<> distr;
+		glm::vec3 pt(distr(gen), distr(gen), distr(gen));
+		pt = glm::normalize(pt) * m_radius + m_position;
+		return pt;
+	}
+
 	float Sphere::getArea()
 	{
 		return 4 * M_PI * m_radius * m_radius;
+	}
+
+	float Sphere::calcSolidAngle(glm::vec3& pt)
+	{
+		float dist = glm::distance(pt, m_position);
+		if (dist < m_radius) return 4 * M_PI;
+		float a = m_radius / dist;
+		float h = 1.0f - glm::sqrt(1.0f - a * a);
+		return 2 * M_PI * h;
 	}
 }

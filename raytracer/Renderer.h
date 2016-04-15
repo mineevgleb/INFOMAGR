@@ -5,20 +5,22 @@
 #include "renederables/Mesh.h"
 #include "Camera.h"
 #include "BVH.h"
+#include "renederables/Sphere.h"
 
 namespace AGR {
 
 	class Renderer {
 	public:
-		Renderer(const Camera &c, const glm::vec3& backgroundColor, const glm::vec2& resolution,
+		Renderer(const Camera &c, Sampler *skydomeTex, const glm::vec2& resolution,
 			bool useAntialiasing);
-		virtual ~Renderer(){};
+		virtual ~Renderer();
 		void addRenderable(Primitive &r);
 		void removeRenderable(Primitive &r);
 		void addRenderable(Mesh& m);
 		void removeRenderable(Mesh& m);
 		void render();
 		void render(const glm::uvec2 &resolution);
+		void setSkydomeAngle(float angle);
 		void testRay(int x, int y);
 		const glm::uvec2 & getResolution() const;
 		const unsigned long *getImage();
@@ -38,10 +40,11 @@ namespace AGR {
 		std::vector<glm::vec3> m_highpImage;
 		glm::uvec2 m_resolution;
 		const Camera *m_camera;
-		glm::vec3 m_backgroundColor;
 		BVH m_bvh;
 		bool m_useAntialiasing;
 		const float shiftValue = FLT_EPSILON * 500;
+		Sphere *m_skydome;
+		Material m_skyMat;
 	};
 
 }

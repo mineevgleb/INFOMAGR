@@ -45,8 +45,11 @@ namespace AGR {
 
 		const glm::vec3& getFaceNormal() const;
 
+		glm::vec3 getRandomPoint() override;
+
 		void commitTransformations();
 		float getArea() override;
+		float calcSolidAngle(glm::vec3& pt) override;
 	private:
 		bool calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out, bool limit) const;
 		Vertex m_vert[3];

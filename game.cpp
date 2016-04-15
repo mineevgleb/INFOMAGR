@@ -22,7 +22,7 @@ void Game::Init()
 	s.push_back(new AGR::CheckboardSampler(glm::vec2(10, 5), glm::vec3(1, 1, 1), glm::vec3(0.5, 0.5, 0.5)));
 	s.push_back(new AGR::ColorSampler(glm::vec3(1, 0.5, 0.5)));
 	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 0.5, 0.5)));
-	s.push_back(new AGR::ImageSampler("pier.jpg"));
+	s.push_back(new AGR::ImageSampler("atlantic.exr", 0, 0.25));
 	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 0.5, 1.0)));
 	m.push_back(new AGR::Material);
 	//m[0]->specularIntensity = 1.0f;
@@ -44,12 +44,11 @@ void Game::Init()
 	m[2]->glowIntensity = 1.0f;
 	m.push_back(new AGR::Material);
 	m[3]->texture = s[1];
-	m[3]->glowIntensity = 5.5f;
+	m[3]->glowIntensity = 10.0f;
 	m[3]->diffuseIntensity = 0.2f;
 	m.push_back(new AGR::Material);
 	m[4]->texture = s[4];
 	m[4]->reflectionIntensity = 1.0;
-	r.push_back(new AGR::Sphere(*m[2], glm::vec3(), 400, glm::vec3(0, 180 ,0)));
 	r.push_back(new AGR::Sphere(*m[1], glm::vec3(2, 0.5, 2), 0.5, glm::vec3(0, 180, 0)));
 	r.push_back(new AGR::Sphere(*m[4], glm::vec3(-2, 0.5, 2), 0.5, glm::vec3(0, 180, 0)));
 	r.push_back(new AGR::Triangle(
@@ -67,9 +66,9 @@ void Game::Init()
 	hum2->load("cube.obj", AGR::CONSISTENT);
 	//hum2->setRotation(glm::vec3(0, -90, 0));
 	hum2->setScale(glm::vec3(0.5f));
-	hum2->setPosition(glm::vec3(2.1, 0.4, 2.0));
+	hum2->setPosition(glm::vec3(2.1, 10.0, 2.0));
 	hum2->commitTransformations();
-	arm = new AGR::Mesh(*m[0]);
+	arm = new AGR::Mesh(*m[1]);
 	arm->load("bunny.obj", AGR::CONSISTENT);
 	arm->setPosition(glm::vec3(0, 0, 0.5));
 	arm->setScale(glm::vec3(0.5));
@@ -78,12 +77,13 @@ void Game::Init()
 
 	l.push_back(new AGR::PointLight(0.1, glm::vec3(0, 3, -3), glm::vec3(1000, 1000, 1000)));
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
-	m_scene = new AGR::Pathtracer(*m_cam, glm::vec3(0, 0, 0), glm::vec2(screen->GetWidth(), screen->GetHeight()));
+	m_scene = new AGR::Pathtracer(*m_cam, s[3], glm::vec2(screen->GetWidth(), screen->GetHeight()));
 	m_scene->addRenderable(*r[0]);
-	m_scene->addRenderable(*r[1]);m_scene->addRenderable(*r[2]);
+	m_scene->addRenderable(*r[1]);
 	m_scene->addRenderable(*hum1);
 	m_scene->addRenderable(*hum2);
 	m_scene->addRenderable(*arm);
+	m_scene->setSkydomeAngle(180);
 	//m_scene->addLight(*l[0]);
 	//m_scene->addLight(*l[1]);
 }

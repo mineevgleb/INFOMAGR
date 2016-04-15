@@ -52,10 +52,7 @@ namespace AGR
 		rsimd.origx4 = _mm_load1_ps(&ray.origin.x);
 		rsimd.origy4 = _mm_load1_ps(&ray.origin.y);
 		rsimd.origz4 = _mm_load1_ps(&ray.origin.z);
-		if(Traverse(ray, rsimd, intersect, &m_quadNodes[0], minLength)) {
-			return true;
-		}
-		return false;
+		return Traverse(ray, rsimd, intersect, &m_quadNodes[0], minLength);
 	}
 
 	void BVH::PacketCheckOcclusions(std::vector<Ray>& rays, std::vector<float>& lengths,

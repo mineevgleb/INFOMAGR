@@ -22,8 +22,9 @@ namespace AGR {
 		void setRadius(float radius);
 
 		void commitTransformations();
-
+		glm::vec3 getRandomPoint() override;
 		float getArea() override;
+		float calcSolidAngle(glm::vec3& pt) override;
 	private:
 		bool m_modified;
 		glm::vec3 m_position;

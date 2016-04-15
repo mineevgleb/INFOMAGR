@@ -1,5 +1,6 @@
 #include "Triangle.h"
 #include "../util.h"
+#include <random>
 
 namespace AGR
 {
@@ -109,6 +110,19 @@ namespace AGR
 		return m_normal;
 	}
 
+	glm::vec3 Triangle::getRandomPoint()
+	{
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::uniform_real_distribution<> distr(0.0f, 1.0f);
+		float a = distr(gen), b = distr(gen);
+		if (a + b > 1.0f) {
+			a = 1.0f - a;
+			b = 1.0f - b;
+		}
+		return m_v0v1 * a + m_v0v2 * b + m_vert[0].position;
+	}
+
 	bool Triangle::calcBarycentricCoord(const glm::vec3& pt, glm::vec3& out, bool limit) const 
 	{
 		glm::vec3 v0pt = pt - m_vert[0].position;
@@ -143,5 +157,20 @@ namespace AGR
 	float Triangle::getArea()
 	{
 		return m_area;
+	}
+
+	float Triangle::calcSolidAngle(glm::vec3& pt)
+	{
+		glm::vec3 v0 = m_vert[0].position - pt;
+		glm::vec3 v1 = m_vert[1].position - pt;
+		glm::vec3 v2 = m_vert[2].position - pt;
+		float d0 = glm::length(v0);
+		float d1 = glm::length(v1);
+		float d2 = glm::length(v2);
+		return abs(2*atan2(glm::dot(v0, glm::cross(v1, v2)),
+			d0 * d1 * d2 + 
+			glm::dot(v0, v1) * d2 +
+			glm::dot(v0, v2) * d1 +
+			glm::dot(v1, v2) * d0));
 	}
 }

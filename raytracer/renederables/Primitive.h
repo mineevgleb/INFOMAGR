@@ -16,6 +16,8 @@ namespace AGR {
 			glm::vec2& texCoord, glm::vec3& normal) const = 0;
 		const AABB& getBoundingBox() const { return m_aabb; }
 		const Material* getMaterial() const { return m_material; }
+		virtual glm::vec3 getRandomPoint() = 0;
+		virtual float calcSolidAngle(glm::vec3& pt) = 0;
 		virtual float getArea() = 0;
 	protected:
 		Material *m_material;
