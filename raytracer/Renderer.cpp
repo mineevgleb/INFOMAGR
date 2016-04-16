@@ -110,6 +110,13 @@ namespace AGR {
 		traceRays(r);
 	}
 
+	void Renderer::setGammaCorrection(bool correct, float gamma, float exposure)
+	{
+		m_correctGamma = correct;
+		m_gamma = gamma;
+		m_exposureScaler = exposure;
+	}
+
 	const glm::uvec2 & Renderer::getResolution() const
 	{
 		return m_resolution;
@@ -119,6 +126,13 @@ namespace AGR {
 	{
 		for (int i = 0; i < m_highpImage.size(); ++i) {
 			glm::vec3 c = m_highpImage[i];
+			if (m_correctGamma) {
+				c *= m_exposureScaler;
+				c = c / (1.0f + c);
+				c.r = glm::pow(c.r, 1.0f / m_gamma);
+				c.g = glm::pow(c.g, 1.0f / m_gamma);
+				c.b = glm::pow(c.b, 1.0f / m_gamma);
+			}
 			c = glm::clamp(c, 0.0f, 1.0f);
 			c *= 255;
 			m_image[i] =

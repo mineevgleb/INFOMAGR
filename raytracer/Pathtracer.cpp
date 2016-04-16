@@ -11,7 +11,7 @@ namespace AGR
 		m_isSceneUpdated(true)
 	{}
 
-	void Pathtracer::Sample(Ray& r, int d, bool collectDirect)
+	void Pathtracer::Sample(Ray& r, int d)
 	{
 		static std::random_device rd;
 		static std::mt19937 gen(rd());
@@ -37,13 +37,10 @@ namespace AGR
 			glm::vec3 n;
 			m_skydome->getTexCoordAndNormal(r, dist, texcoord, n);
 			glm::vec3 color;
-			if (collectDirect)
-				m_skydome->getMaterial()->texture->getColor(texcoord, color);
-			else 
-				m_skydome->getMaterial()->texture->getHDRColor(texcoord, color);
+			m_skydome->getMaterial()->texture->getHDRColor(texcoord, color);
 			float maxComp = color.r > color.g && color.r != INFINITY ? color.r : color.g;
 			maxComp = maxComp > color.b && maxComp != INFINITY ? maxComp : color.b;
-			const float maxEdge = 64.0f;
+			const float maxEdge = 80.0f;
 			if (maxComp == INFINITY) maxComp = maxEdge;
 			if (color.r == INFINITY || color.g == INFINITY || color.b == INFINITY) {
 				if (color.r == INFINITY) color.r = maxComp;
@@ -73,65 +70,105 @@ namespace AGR
 		glm::vec3 color = glm::vec3(1, 1, 1);
 		if (m->texture)
 			m->texture->getColor(texCoord, color);
-		if (materialType < m->diffuseIntensity) {
-			glm::vec3 brdf = color / M_PI;
+		if (!m->isMicrofacet) {
+			if (materialType < m->diffuseIntensity) {
+				glm::vec3 brdf = color / M_PI;
+				Ray next;
+				next.origin = hit.ray_length * r.direction + r.origin + normal * shiftValue;
+				next.direction = diffuseReflection(normal);
+				next.pixel = r.pixel;
+				next.energy = r.energy * brdf * M_PI;
+				next.surroundMaterial = r.surroundMaterial;
+				float lPdf;
+				glm::vec3 directColor = SampleDirect(next.origin, normal, brdf, &lPdf);
+				float brdfPdf = glm::dot(next.direction, normal) / M_PI;
+				*r.pixel += directColor * r.energy * (lPdf / (lPdf + brdfPdf));
+				*r.pixel += color * m->glowIntensity * r.energy * (brdfPdf / (lPdf + brdfPdf));
+				Sample(next, d + 1);
+				return;
+			}
+			materialType -= m->diffuseIntensity;
+			float trueReflection = m->reflectionIntensity;
+			float trueRefraction = m->refractionIntensity;
+			if (materialType < m->refractionIntensity) {
+				Ray next;
+				next.surroundMaterial = r.surroundMaterial ? nullptr : m;
+				float refrCoef1 = r.surroundMaterial ? m->refractionCoeficient : 1.0f;
+				float refrCoef2 = r.surroundMaterial ? 1.0f : m->refractionCoeficient;
+				next.origin = hit.ray_length * r.direction + r.origin - normal * shiftValue;
+				if (calcRefractedRay(r.direction, normal, refrCoef1, refrCoef2, next.direction)) {
+					float frenselRefl;
+					if (r.surroundMaterial) {
+						frenselRefl = calcReflectionComponent(next.direction,
+							normal, refrCoef1, refrCoef2);
+					}
+					else {
+						frenselRefl = calcReflectionComponent(r.direction,
+							normal, refrCoef1, refrCoef2);
+					}
+					trueRefraction -= frenselRefl;
+					trueReflection += frenselRefl;
+					if (materialType < trueRefraction) {
+						next.energy = r.energy;
+						next.pixel = r.pixel;
+						Sample(next, d + 1);
+						return;
+					}
+				}
+				else {
+					trueReflection += m->refractionIntensity;
+				}
+			}
+			materialType -= trueRefraction;
+			if (materialType < trueReflection) {
+				Ray next;
+				next.origin = hit.ray_length * r.direction + r.origin + normal * shiftValue;
+				calcReflectedRay(r.direction, normal, next.direction);
+				next.energy = r.energy * color;
+				next.pixel = r.pixel;
+				next.surroundMaterial = r.surroundMaterial;
+				Sample(next, d + 1);
+				return;
+			}
+			*r.pixel += color * m->glowIntensity * r.energy;
+		} else {
 			Ray next;
 			next.origin = hit.ray_length * r.direction + r.origin + normal * shiftValue;
-			next.direction = diffuseReflection(normal);
+			float brdfPdf = 0.0f;
+			next.direction = microfacetReflection(normal, r.direction, m->microfacetAlpha, &brdfPdf);
+			if (glm::dot(next.direction, normal) < 0) return;
 			next.pixel = r.pixel;
-			next.energy = r.energy * brdf * M_PI;
+			glm::vec3 halfway = glm::normalize(next.direction - r.direction);
+			float NdotH = glm::dot(normal, halfway);
+			float VdotH = glm::dot(-r.direction, halfway);
+			float NdotL = glm::dot(normal, next.direction);
+			float NdotV = glm::dot(normal, -r.direction);
+			float distrib = ((m->microfacetAlpha + 2) / (2 * M_PI)) *
+				glm::pow(NdotH, m->microfacetAlpha);
+
+			float geometryTerm = glm::min(1.0f,
+				glm::min(
+					2 * NdotH * NdotV / VdotH,
+					2 * NdotH * NdotL / VdotH
+				)
+			);
+			float scaler = 1 - glm::dot(next.direction, halfway);
+			float scalerPow5 = scaler * scaler;
+			scalerPow5 *= scalerPow5;
+			scalerPow5 *= scaler;
+			glm::vec3 frenselTerm = color + (1.0f - color) * scalerPow5;
+			glm::vec3 brdf = frenselTerm * geometryTerm * distrib / (4 * NdotL * NdotH);
+			if (brdf.x < FLT_EPSILON && brdf.y < FLT_EPSILON && brdf.z < FLT_EPSILON) return;
+			next.energy = r.energy * brdf * NdotL / brdfPdf;
 			next.surroundMaterial = r.surroundMaterial;
 			float lPdf;
 			glm::vec3 directColor = SampleDirect(next.origin, normal, brdf, &lPdf);
-			float brdfPdf = glm::dot(next.direction, normal) / M_PI;
 			*r.pixel += directColor * r.energy * (lPdf / (lPdf + brdfPdf));
 			*r.pixel += color * m->glowIntensity * r.energy * (brdfPdf / (lPdf + brdfPdf));
-			Sample(next, d + 1, false);
-			return;
+			if (isnan(r.pixel->x))
+				r.pixel->x = 1;
+			Sample(next, d + 1);
 		}
-		materialType -= m->diffuseIntensity;
-		float trueReflection = m->reflectionIntensity;
-		float trueRefraction = m->refractionIntensity;
-		if (materialType < m->refractionIntensity) {
-			Ray next;
-			next.surroundMaterial = r.surroundMaterial ? nullptr : m;
-			float refrCoef1 = r.surroundMaterial ? m->refractionCoeficient : 1.0f;
-			float refrCoef2 = r.surroundMaterial ? 1.0f : m->refractionCoeficient;
-			next.origin = hit.ray_length * r.direction + r.origin - normal * shiftValue;
-			if (calcRefractedRay(r.direction, normal, refrCoef1, refrCoef2, next.direction)) {
-				float frenselRefl;
-				if (r.surroundMaterial) {
-					frenselRefl = calcReflectionComponent(next.direction,
-						normal, refrCoef1, refrCoef2);
-				}
-				else {
-					frenselRefl = calcReflectionComponent(r.direction,
-						normal, refrCoef1, refrCoef2);
-				}
-				trueRefraction -= frenselRefl;
-				trueReflection += frenselRefl;
-				if (materialType < trueRefraction) {
-					next.energy = r.energy;
-					next.pixel = r.pixel;
-					Sample(next, d + 1, collectDirect);
-					return;
-				}
-			} else {
-				trueReflection += m->refractionIntensity;
-			}
-		}
-		materialType -= trueRefraction;
-		if (materialType < trueReflection) {
-			Ray next;
-			next.origin = hit.ray_length * r.direction + r.origin + normal * shiftValue;
-			calcReflectedRay(r.direction, normal, next.direction);
-			next.energy = r.energy * color;
-			next.pixel = r.pixel;
-			next.surroundMaterial = r.surroundMaterial;
-			Sample(next, d + 1, true);
-			return;
-		}
-		*r.pixel += color * m->glowIntensity * r.energy;
 	}
 
 	glm::vec3 Pathtracer::SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf, float *outPdf)
@@ -179,7 +216,7 @@ namespace AGR
 		}
 		concurrency::parallel_for(0, (int)rays.size(), 1, [this, &rays](int i) {
 		//for (int i = 0; i < rays.size(); ++i) {
-			Sample(rays[i], 0, true);
+			Sample(rays[i], 0);
 		});
 	}
 
@@ -243,5 +280,49 @@ namespace AGR
 		return glm::normalize(
 			side1 * sin(r1) * r2s + side2 * cos(r1) * r2s + normal * sqrt(1.0f - r2)
 		);
+	}
+
+	glm::vec3 Pathtracer::diffuseUniformReflection(const glm::vec3& normal) const
+	{
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::normal_distribution<> dis;
+		glm::vec3 local = glm::normalize(glm::vec3(dis(gen), dis(gen), dis(gen)));
+		local.z = glm::abs(local.z);
+		glm::vec3 side1 = glm::normalize(glm::cross(
+			glm::abs(normal.x) > FLT_EPSILON ?
+			glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0),
+			normal));
+		glm::vec3 side2 = glm::normalize(glm::cross(side1, normal));
+		return glm::normalize(
+			side1 * local.x + side2 * local.y + normal * local.z
+			);
+	}
+
+	glm::vec3 Pathtracer::microfacetReflection(const glm::vec3& normal, const glm::vec3& incoming, 
+		float alpha, float* outPDF) const
+	{
+		glm::vec3 result;
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::uniform_real_distribution<> dis(0.0f, 1.0f);
+		float r0 = dis(gen);
+		float phi = dis(gen) * 2 * M_PI;
+		float costheta = glm::pow(r0, 1.0f / (1.0f + alpha));
+		float sintheta = glm::sqrt(1.0f - costheta * costheta);
+		glm::vec3 halfwayLocal = glm::vec3(sintheta * glm::cos(phi),
+			sintheta * glm::sin(phi), costheta);
+		glm::vec3 side1 = glm::normalize(glm::cross(
+			glm::abs(normal.x) > FLT_EPSILON ?
+			glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0),
+			normal));
+		glm::vec3 side2 = glm::normalize(glm::cross(side1, normal));
+		glm::vec3 halfwayGlobal = glm::normalize(
+			side1 * halfwayLocal.x + side2 * halfwayLocal.y + normal * halfwayLocal.z
+			);
+		*outPDF = (alpha + 2.0f) * glm::pow(glm::dot(halfwayGlobal, normal), alpha + 1) /
+			(8 * M_PI * glm::dot(-incoming, halfwayGlobal));
+		result = 2 * glm::dot(-incoming, halfwayGlobal) * halfwayGlobal + incoming;
+		return result;
 	}
 }
