@@ -23,6 +23,8 @@ namespace AGR {
 		void setSkydomeAngle(float angle);
 		void testRay(int x, int y);
 		void setGammaCorrection(bool correct, float gamma = 2.2f, float exposure = 1.0f);
+		void setSepia(bool enabled);
+		void setVignetting(bool enabled, float alpha = 1.0f);
 		const glm::uvec2 & getResolution() const;
 		const unsigned long *getImage();
 	protected:
@@ -48,6 +50,11 @@ namespace AGR {
 		bool m_correctGamma = false;
 		float m_gamma = 2.2f;
 		float m_exposureScaler = 1.0f;
+
+		bool m_sepia = false;
+
+		bool m_vignetting = false;
+		float m_vignettingAlpha = 1.0f;
 
 		Sphere *m_skydome;
 		Material m_skyMat;

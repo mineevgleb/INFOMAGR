@@ -15,10 +15,25 @@ namespace AGR {
 		static std::random_device rd;
 		static std::mt19937 gen(rd());
 		std::uniform_real_distribution<> distr;
-		float r = glm::sqrt(distr(gen));
-		float angle = distr(gen) * 2 * M_PI;
-		glm::vec2 offset = glm::vec2(r * glm::cos(angle), r * glm::sin(angle));
-		offset = offset * m_apertureSize;
+		glm::vec2 offset = glm::vec2();
+		if (m_apertureSize > FLT_EPSILON) {
+			if (m_edgesAm < 3) {
+				float r = glm::sqrt(distr(gen));
+				float angle = distr(gen) * 2 * M_PI;
+				offset = glm::vec2(r * glm::cos(angle), r * glm::sin(angle));
+			} else {
+				std::uniform_int_distribution<> distrInt(0, m_edgesAm - 1);
+				int triangeNum = distrInt(gen);
+				float angle1 = m_lensRotation + (M_PI * 2 / m_edgesAm) * triangeNum;
+				float angle2 = m_lensRotation + (M_PI * 2 / m_edgesAm) * (triangeNum + 1);
+				glm::vec2 side1 = glm::vec2(cos(angle1), sin(angle1));
+				glm::vec2 side2 = glm::vec2(cos(angle2), sin(angle2));
+				glm::vec2 coef = glm::vec2(distr(gen), distr(gen));
+				if (coef.x + coef.y > 1.0f) coef = 1.0f - coef;
+				offset = side1 * coef.x + side2 * coef.y;
+			}
+			offset = offset * m_apertureSize;
+		}
 		glm::vec3 globalOffset = offset.x * m_rightVec * 2.0f + offset.y * m_upVec * 2.0f;
 		out.origin = m_position + globalOffset;
 		out.direction = glm::normalize(m_frontVec * m_focalDist +
@@ -79,10 +94,13 @@ namespace AGR {
 		updateVectors();
 	}
 
-	void Camera::setLensParams(float focalDist, float apertureSize)
+	void Camera::setLensParams(float focalDist, float apertureSize, 
+		int edgesAm, float roatation)
 	{
 		m_focalDist = focalDist;
 		m_apertureSize = apertureSize;
+		m_edgesAm = edgesAm;
+		m_lensRotation = roatation;
 	}
 
 	void Camera::updateVectors()

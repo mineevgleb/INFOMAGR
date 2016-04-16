@@ -117,6 +117,17 @@ namespace AGR {
 		m_exposureScaler = exposure;
 	}
 
+	void Renderer::setSepia(bool enabled)
+	{
+		m_sepia = enabled;
+	}
+
+	void Renderer::setVignetting(bool enabled, float alpha)
+	{
+		m_vignetting = enabled;
+		m_vignettingAlpha = alpha;
+	}
+
 	const glm::uvec2 & Renderer::getResolution() const
 	{
 		return m_resolution;
@@ -132,6 +143,20 @@ namespace AGR {
 				c.r = glm::pow(c.r, 1.0f / m_gamma);
 				c.g = glm::pow(c.g, 1.0f / m_gamma);
 				c.b = glm::pow(c.b, 1.0f / m_gamma);
+			}
+			if (m_sepia) {
+				glm::vec3 tmp = c;
+				c.r = (tmp.r * 0.393f) + (tmp.g * 0.769f) + (tmp.b * 0.189f);
+				c.g = (tmp.r * 0.349f) + (tmp.g * 0.686f) + (tmp.b * 0.168f);
+				c.b = (tmp.r * 0.272f) + (tmp.g * 0.534f) + (tmp.b * 0.131f);
+			}
+			if (m_vignetting) {
+				float x = static_cast<float>(i % m_resolution.x) / m_resolution.x - 0.5f;
+				float y = static_cast<float>(i / m_resolution.x) / m_resolution.y - 0.5f;
+				float dist = glm::sqrt(x * x + y * y);
+				float scaler = (1.0f - m_vignettingAlpha * dist) / (1.0f + dist * dist);
+				if (scaler < 0) scaler = 0;
+				c *= scaler;
 			}
 			c = glm::clamp(c, 0.0f, 1.0f);
 			c *= 255;

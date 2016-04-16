@@ -19,9 +19,9 @@ void Game::Init()
 {
 	float aspectRatio = static_cast<float>(screen->GetWidth()) / screen->GetHeight();
 	m_cam = new AGR::Camera(aspectRatio, 120, glm::vec3(0, 1.5, -5));
-	m_cam->setLensParams(5.5f, 0.07f);
+	m_cam->setLensParams(5.5f, 0.1f, 3);
 	s.push_back(new AGR::CheckboardSampler(glm::vec2(10, 5), glm::vec3(1, 1, 1), glm::vec3(0.5, 0.5, 0.5)));
-	s.push_back(new AGR::ColorSampler(glm::vec3(1, 0.05, 0.05)));
+	s.push_back(new AGR::ColorSampler(glm::vec3(0.9, 0.9, 0.05)));
 	s.push_back(new AGR::ColorSampler(glm::vec3(0.5, 0.5, 0.5)));
 	s.push_back(new AGR::ImageSampler("atlantic.exr", 0, 0.25));
 	s.push_back(new AGR::ColorSampler(glm::vec3(1.0, 0.71, 0.29)));
@@ -45,12 +45,12 @@ void Game::Init()
 	m[2]->glowIntensity = 1.0f;
 	m.push_back(new AGR::Material);
 	m[3]->texture = s[1];
-	m[3]->glowIntensity = 0.5f;
+	m[3]->glowIntensity = 5.0f;
 	m[3]->diffuseIntensity = 1.0f;
 	m.push_back(new AGR::Material);
 	m[4]->texture = s[4];
 	m[4]->isMicrofacet = true;
-	m[4]->microfacetAlpha = 1000.0f;
+	m[4]->microfacetAlpha = 10.0f;
 	//m[4]->reflectionIntensity = 1.0;
 	r.push_back(new AGR::Sphere(*m[1], glm::vec3(2, 0.5, 2), 0.5, glm::vec3(0, 180, 0)));
 	r.push_back(new AGR::Sphere(*m[4], glm::vec3(-2, 0.5, 2), 0.5, glm::vec3(0, 180, 0)));
@@ -82,6 +82,8 @@ void Game::Init()
 	l.push_back(new AGR::PointLight(0.5, glm::vec3(0, 1, 40), glm::vec3(1000, 1000, 1000)));
 	m_scene = new AGR::Pathtracer(*m_cam, s[3], glm::vec2(screen->GetWidth(), screen->GetHeight()));
 	m_scene->setGammaCorrection(true, 2.2, 0.3);
+	//m_scene->setSepia(true);
+	m_scene->setVignetting(true);
 	m_scene->addRenderable(*r[0]);
 	m_scene->addRenderable(*r[1]);
 	m_scene->addRenderable(*hum1);

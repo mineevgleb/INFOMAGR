@@ -80,7 +80,7 @@ namespace AGR
 				next.energy = r.energy * brdf * M_PI;
 				next.surroundMaterial = r.surroundMaterial;
 				float lPdf;
-				glm::vec3 directColor = SampleDirect(next.origin, normal, brdf, &lPdf);
+				glm::vec3 directColor = SampleDirect(next.origin, r.direction, normal, color, &lPdf, m);
 				float brdfPdf = glm::dot(next.direction, normal) / M_PI;
 				*r.pixel += directColor * r.energy * (lPdf / (lPdf + brdfPdf));
 				*r.pixel += color * m->glowIntensity * r.energy * (brdfPdf / (lPdf + brdfPdf));
@@ -138,31 +138,12 @@ namespace AGR
 			next.direction = microfacetReflection(normal, r.direction, m->microfacetAlpha, &brdfPdf);
 			if (glm::dot(next.direction, normal) < 0) return;
 			next.pixel = r.pixel;
-			glm::vec3 halfway = glm::normalize(next.direction - r.direction);
-			float NdotH = glm::dot(normal, halfway);
-			float VdotH = glm::dot(-r.direction, halfway);
-			float NdotL = glm::dot(normal, next.direction);
-			float NdotV = glm::dot(normal, -r.direction);
-			float distrib = ((m->microfacetAlpha + 2) / (2 * M_PI)) *
-				glm::pow(NdotH, m->microfacetAlpha);
-
-			float geometryTerm = glm::min(1.0f,
-				glm::min(
-					2 * NdotH * NdotV / VdotH,
-					2 * NdotH * NdotL / VdotH
-				)
-			);
-			float scaler = 1 - glm::dot(next.direction, halfway);
-			float scalerPow5 = scaler * scaler;
-			scalerPow5 *= scalerPow5;
-			scalerPow5 *= scaler;
-			glm::vec3 frenselTerm = color + (1.0f - color) * scalerPow5;
-			glm::vec3 brdf = frenselTerm * geometryTerm * distrib / (4 * NdotL * NdotH);
+			glm::vec3 brdf = calcMicrofacetBrdf(m, r.direction, next.direction, normal, color);
 			if (brdf.x < FLT_EPSILON && brdf.y < FLT_EPSILON && brdf.z < FLT_EPSILON) return;
-			next.energy = r.energy * brdf * NdotL / brdfPdf;
+			next.energy = r.energy * brdf * glm::dot(normal, next.direction) / brdfPdf;
 			next.surroundMaterial = r.surroundMaterial;
 			float lPdf;
-			glm::vec3 directColor = SampleDirect(next.origin, normal, brdf, &lPdf);
+			glm::vec3 directColor = SampleDirect(next.origin, r.direction, normal, color, &lPdf, m);
 			*r.pixel += directColor * r.energy * (lPdf / (lPdf + brdfPdf));
 			*r.pixel += color * m->glowIntensity * r.energy * (brdfPdf / (lPdf + brdfPdf));
 			if (isnan(r.pixel->x))
@@ -171,7 +152,9 @@ namespace AGR
 		}
 	}
 
-	glm::vec3 Pathtracer::SampleDirect(glm::vec3& pt, glm::vec3& normal, glm::vec3& brdf, float *outPdf)
+	glm::vec3 Pathtracer::SampleDirect(glm::vec3& pt, glm::vec3& incoming,
+		glm::vec3& normal, glm::vec3& color,
+		float *outPdf, const Material *m)
 	{
 		if (m_lightsForSampling.size() == 0) return glm::vec3();
 		const int attempts = 5;
@@ -193,6 +176,12 @@ namespace AGR
 		light->getTexCoordAndNormal(r, distToLight, texCoord, lightNormal);
 		if (glm::dot(normal, r.direction) > 0 && glm::dot(lightNormal, -r.direction) > 0) {
 			if (!m_bvh.Traverse(r, hit, distToLight - 1.0) || hit.p_object == light) {
+				glm::vec3 brdf;
+				if (m->isMicrofacet) {
+					brdf = calcMicrofacetBrdf(m, incoming, r.direction, normal, color);
+				} else {
+					brdf = color / M_PI;
+				}
 				float solidAngle = light->calcSolidAngle(pt);
 				const Material *m = light->getMaterial();
 				glm::vec3 col;
@@ -324,5 +313,31 @@ namespace AGR
 			(8 * M_PI * glm::dot(-incoming, halfwayGlobal));
 		result = 2 * glm::dot(-incoming, halfwayGlobal) * halfwayGlobal + incoming;
 		return result;
+	}
+
+	glm::vec3 Pathtracer::calcMicrofacetBrdf(const Material* m, const glm::vec3& incoming, 
+		const glm::vec3& outgoing, const glm::vec3& normal, const glm::vec3& specCoef)
+	{
+		glm::vec3 halfway = glm::normalize(outgoing - incoming);
+		float NdotH = glm::dot(normal, halfway);
+		float VdotH = glm::dot(-incoming, halfway);
+		float NdotL = glm::dot(normal, outgoing);
+		float NdotV = glm::dot(normal, -incoming);
+		float distrib = ((m->microfacetAlpha + 2) / (2 * M_PI)) *
+			glm::pow(NdotH, m->microfacetAlpha);
+
+		float geometryTerm = glm::min(1.0f,
+			glm::min(
+				2 * NdotH * NdotV / VdotH,
+				2 * NdotH * NdotL / VdotH
+				)
+			);
+		float scaler = 1 - glm::dot(outgoing, halfway);
+		float scalerPow5 = scaler * scaler;
+		scalerPow5 *= scalerPow5;
+		scalerPow5 *= scaler;
+		glm::vec3 frenselTerm = specCoef + (1.0f - specCoef) * scalerPow5;
+		glm::vec3 brdf = frenselTerm * geometryTerm * distrib / (4 * NdotL * NdotH);
+		return brdf;
 	}
 }
